@@ -1,0 +1,30 @@
+# Custom sonos-http-api image built from the local forks in /home/media/pr-work.
+#
+# Build context is /home/media/pr-work so both repositories are available:
+#   node-sonos-http-api  (this repo, integration/sonos-fixes)
+#   node-sonos-discovery (integration/sonos-fixes, referenced via file:./sonos-discovery)
+#
+#   docker build -f node-sonos-http-api/Dockerfile.fork -t sonos-http-api:fork /home/media/pr-work
+
+FROM node:22-alpine
+
+WORKDIR /app
+
+RUN apk add --no-cache curl
+
+COPY node-sonos-http-api/ /app/
+COPY node-sonos-discovery/ /app/sonos-discovery/
+
+RUN npm install --omit=dev \
+    && rm -rf /tmp/* /root/.npm \
+    && mkdir -p cache \
+    && chown -R node:node /app
+
+EXPOSE 5005
+
+USER node
+
+HEALTHCHECK --interval=1m --timeout=2s --start-period=15s \
+  CMD curl -LSfs http://localhost:5005/zones || exit 1
+
+CMD ["npm", "start"]
