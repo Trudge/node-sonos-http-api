@@ -20,7 +20,8 @@
     "server.js",
     "settings.js",
     "lib/**/*.js",
-    "src/**/*.ts"
+    "src/**/*.ts",
+    "lib/**/*.ts"
   ],
   "exclude": [
     "node_modules",
