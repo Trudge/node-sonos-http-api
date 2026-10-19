@@ -2,8 +2,8 @@
 const logger = require('sonos-discovery/lib/helpers/logger');
 const isRadioOrLineIn = require('../helpers/is-radio-or-line-in');
 
-function saveAll(system) {
-  const backupPresets = system.zones.map((zone) => {
+function saveAll(system:  any) {
+  const backupPresets = system.zones.map((zone: any) => {
     const coordinator = zone.coordinator;
     const state = coordinator.state;
     const preset: any = {
@@ -23,7 +23,7 @@ function saveAll(system) {
       preset.elapsedTime = state.elapsedTime;
     }
 
-    zone.members.forEach(function (player) {
+    zone.members.forEach(function (player: any) {
       if (coordinator.uuid != player.uuid)
         preset.players.push({ roomName: player.roomName, volume: player.state.volume });
     });
@@ -33,13 +33,13 @@ function saveAll(system) {
   });
 
   logger.trace('backup presets', backupPresets);
-  return backupPresets.sort((a, b) => {
+  return backupPresets.sort((a: any, b: any) => {
     return a.players.length < b.players.length;
   });
 }
 
-function announcePreset(system, uri, preset, duration) {
-  let abortTimer;
+function announcePreset(system:  any, uri:  any, preset:  any, duration:  any) {
+  let abortTimer: any;
 
   // Save all players
   var backupPresets = saveAll(system);
@@ -52,14 +52,14 @@ function announcePreset(system, uri, preset, duration) {
     state: 'STOPPED'
   };
 
-  function hasReachedCorrectTopology(zones) {
-    return zones.some(group =>
+  function hasReachedCorrectTopology(zones:  any) {
+    return zones.some((group: any) =>
     group.members.length === preset.players.length &&
     group.coordinator.roomName === preset.players[0].roomName);
   }
 
-  const oneGroupPromise = new Promise<void>((resolve) => {
-    const onTopologyChanged = (topology) => {
+  const oneGroupPromise = new Promise<void>((resolve: any) => {
+    const onTopologyChanged = (topology: any) => {
       if (hasReachedCorrectTopology(topology)) {
         return resolve();
       }
@@ -81,8 +81,8 @@ function announcePreset(system, uri, preset, duration) {
     })
     .then(() => {
       coordinator.play();
-      return new Promise<void>((resolve) => {
-        const transportChange = (state) => {
+      return new Promise<void>((resolve: any) => {
+        const transportChange = (state: any) => {
           logger.debug(`Player changed to state ${state.playbackState}`);
           if (state.playbackState === 'STOPPED') {
             return resolve();
@@ -101,12 +101,12 @@ function announcePreset(system, uri, preset, duration) {
       clearTimeout(abortTimer);
     })
     .then(() => {
-      return backupPresets.reduce((promise, preset) => {
+      return backupPresets.reduce((promise: any, preset: any) => {
         logger.trace('Restoring preset', preset);
         return promise.then(() => system.applyPreset(preset));
       }, Promise.resolve());
     })
-    .catch((err) => {
+    .catch((err: any) => {
       logger.error(err.stack);
       throw err;
     });

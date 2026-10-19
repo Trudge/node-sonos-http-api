@@ -1,5 +1,5 @@
 'use strict';
-const deezerDef = {
+const deezerDef: any = {
   country:   '',
   song:      '',
   search:    {
@@ -23,7 +23,7 @@ const deezerDef = {
                station: 'item.audioItem.audioBroadcast.#DEFAULT'
              },
          
-  init:      function(flacOn) { this.song = (flacOn)?'00032020tr-flac%3a':'00032020tr%3a'; return this;},       
+  init:      function (flacOn: any) { this.song = (flacOn)?'00032020tr-flac%3a':'00032020tr%3a'; return this;},       
   service:   setService,
   term:      getSearchTerm,    
   tracks:    loadTracks,
@@ -42,7 +42,7 @@ function authenticateService() {
   return Promise.resolve();
 }
 
-function getURI(type, id) {
+function getURI(type:  any, id:  any): any {
   if (type == 'album') {
     return `x-rincon-cpcontainer:0004006calbum-${id}`;
   } else 
@@ -65,7 +65,7 @@ var accountId = '';
 var accountSN = '';
 var country = '';
 
-function setService(player, p_accountId, p_accountSN, p_country)
+function setService(player:  any, p_accountId:  any, p_accountSN:  any, p_country:  any)
 {
   sid = player.system.getServiceId('Deezer');
   serviceType = player.system.getServiceType('Deezer');
@@ -74,7 +74,7 @@ function setService(player, p_accountId, p_accountSN, p_country)
   country = p_country;
 }
 
-function getSearchTerm(type, term, artist, album, track) {
+function getSearchTerm(type:  any, term:  any, artist:  any, album:  any, track:  any) {
   var newTerm = '';
 
   if (album != '') {
@@ -91,7 +91,7 @@ function getSearchTerm(type, term, artist, album, track) {
   return newTerm;
 }
 
-function getMetadata(type, id, name, title) {
+function getMetadata(type:  any, id:  any, name:  any, title:  any) {
   const token = getServiceToken();
   const parentUri = deezerDef.parent[type] + name;
   const objectType = deezerDef.object[type];
@@ -106,7 +106,7 @@ function getMetadata(type, id, name, title) {
           <desc id="cdudn" nameSpace="urn:schemas-rinconnetworks-com:metadata-1-0/">${token}</desc></item></DIDL-Lite>`;
 }
 
-function getURIandMetadata(type, resList)
+function getURIandMetadata(type:  any, resList:  any)
 {
   var Id = '';
   var Title = '';
@@ -128,7 +128,7 @@ function getURIandMetadata(type, resList)
   return UaM;
 }
 
-function loadTracks(type, tracksJson)
+function loadTracks(type:  any, tracksJson:  any)
 {
   var tracks = { count : 0,
                  isArtist : false,
@@ -138,7 +138,7 @@ function loadTracks(type, tracksJson)
   // Load the tracks from the json results data
   if (tracksJson.data.length > 0) {
     // Filtered list of tracks to play
-    tracks.queueTracks = tracksJson.data.reduce(function(tracksArray, track) {
+    tracks.queueTracks = tracksJson.data.reduce(function (tracksArray: any, track: any) {
       var skip = false;
   
       for (var j=0; (j < tracksArray.length) && !skip ; j++) {
@@ -161,7 +161,7 @@ function loadTracks(type, tracksJson)
   return tracks;
 }
   
-function isEmpty(type, resList)
+function isEmpty(type:  any, resList:  any)
 {
   return (resList.data.length == 0);
 }

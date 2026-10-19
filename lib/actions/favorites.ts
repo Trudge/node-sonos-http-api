@@ -1,7 +1,7 @@
 function favorites(player: any, values: string[]): Promise<any> {
   return player.system.getFavorites().then((items: any[]) => {
     if (values[0] === 'detailed') return items;
-    return items.map((item) => item.title);
+    return items.map((item: any) => item.title);
   });
 }
 

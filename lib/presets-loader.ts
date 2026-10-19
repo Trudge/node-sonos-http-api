@@ -8,9 +8,9 @@ const settings = require('../src/settings');
 
 const PRESETS_PATH = settings.presetDir;
 const PRESETS_FILENAME = `${__dirname}/../presets.json`;
-const presets = {};
+const presets: Record<string, any> = {};
 
-function readPresetsFromDir(presets, presetPath) {
+function readPresetsFromDir(presets:  any, presetPath:  any) {
   let files;
   try {
     files = fs.readdirSync(presetPath);
@@ -20,16 +20,16 @@ function readPresetsFromDir(presets, presetPath) {
     return;
   }
 
-  files.map((name) => {
+  files.map((name: any) => {
     let fullPath = path.join(presetPath, name);
     return {
       name,
       fullPath,
       stat: fs.statSync(fullPath)
     };
-  }).filter((file) => {
+  }).filter((file: any) => {
     return !file.stat.isDirectory() && !file.name.startsWith('.') && file.name.endsWith('.json');
-  }).forEach((file) => {
+  }).forEach((file: any) => {
     const presetName = file.name.replace(/\.json/i, '');
     const preset = tryLoadJson(file.fullPath);
     if (Object.keys(preset).length === 0) {
@@ -42,7 +42,7 @@ function readPresetsFromDir(presets, presetPath) {
 
 }
 
-function readPresetsFromFile(presets, filename) {
+function readPresetsFromFile(presets:  any, filename:  any) {
   try {
     const presetStat = fs.statSync(filename);
     if (!presetStat.isFile()) {
@@ -50,7 +50,7 @@ function readPresetsFromFile(presets, filename) {
     }
 
     const filePresets = require(filename);
-    Object.keys(filePresets).forEach(presetName => {
+    Object.keys(filePresets).forEach((presetName: any) => {
       presets[presetName] = filePresets[presetName];
     });
 
@@ -63,7 +63,7 @@ function readPresetsFromFile(presets, filename) {
 }
 
 function initPresets() {
-  Object.keys(presets).forEach(presetName => {
+  Object.keys(presets).forEach((presetName: any) => {
     delete presets[presetName];
   });
   readPresetsFromFile(presets, PRESETS_FILENAME);
@@ -74,7 +74,7 @@ function initPresets() {
 }
 
 initPresets();
-let watchTimeout;
+let watchTimeout: any;
 try {
   fs.watch(PRESETS_PATH, { persistent: false }, () => {
     clearTimeout(watchTimeout);

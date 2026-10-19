@@ -1,5 +1,5 @@
 'use strict';
-function getMetadata(id, parentUri, type, title) {
+function getMetadata(id: any, parentUri: any, type: any, title: any) {
 return `<DIDL-Lite xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:upnp="urn:schemas-upnp-org:metadata-1-0/upnp/" xmlns:r="urn:schemas-rinconnetworks-com:metadata-1-0/" xmlns="urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/">
 <item id="${id}" parentID="${parentUri}" restricted="true">
   <dc:title>"${title}"</dc:title>
@@ -9,41 +9,41 @@ return `<DIDL-Lite xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:upnp="urn:s
 </DIDL-Lite>`;
 }
 
-function getSongUri(id) {
+function getSongUri(id: any) {
   return `x-sonosapi-hls-static:catalog%2ftracks%2f${id}%2f%3falbumAsin%3dB01JDKZWK0?sid=201&flags=0&sn=4`;
 }
 
-function getAlbumUri(id) {
+function getAlbumUri(id: any) {
   return `x-rincon-cpcontainer:1004206ccatalog%2falbums%2f${id}%2f%23album_desc?sid=201&flags=8300&sn=4`;
 }
 
-const uriTemplates = {
+const uriTemplates: Record<string, (id: string) => string> = {
   song: getSongUri,
   album: getAlbumUri
 };
 
-const CLASSES = {
+const CLASSES: Record<string, string> = {
   song: 'object.container.album.musicAlbum.#AlbumView',
   album: 'object.container.album.musicAlbum'
 };
 
-const METADATA_URI_STARTERS = {
+const METADATA_URI_STARTERS: Record<string, string> = {
   song: '10030000catalog%2ftracks%2f',
   album: '1004206ccatalog'
 };
 
-const METADATA_URI_ENDINGS = {
+const METADATA_URI_ENDINGS: Record<string, string> = {
   song: '%2f%3falbumAsin%3d',
   album: '%2f%23album_desc'
 };
 
 
-const PARENTS = {
+const PARENTS: Record<string, string> = {
   song: '1004206ccatalog%2falbums%2f',
   album: '10052064catalog%2fartists%2f'
 };
 
-function amazonMusic(player, values) {
+function amazonMusic(player: any, values: any) {
   const action = values[0];
   const track = values[1];
   const type = track.split(':')[0];
@@ -74,6 +74,6 @@ function amazonMusic(player, values) {
   }
 }
 
-module.exports = function (api) {
+module.exports = function (api: any) {
   api.registerAction('amazonmusic', amazonMusic);
 };

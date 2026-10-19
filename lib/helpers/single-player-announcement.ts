@@ -1,9 +1,9 @@
 'use strict';
 const logger = require('sonos-discovery/lib/helpers/logger');
 const isRadioOrLineIn = require('../helpers/is-radio-or-line-in');
-const backupPresets = {};
+const backupPresets: Record<string, any[]> = {};
 
-function singlePlayerAnnouncement(player, uri, volume, duration) {
+function singlePlayerAnnouncement(player:  any, uri:  any, volume:  any, duration:  any) {
 // Create backup preset to restore this player
   const state = player.state;
   const system = player.system;
@@ -19,7 +19,7 @@ function singlePlayerAnnouncement(player, uri, volume, duration) {
   if (player.coordinator.uuid == player.uuid) {
     // This one is coordinator, you will need to rejoin
     // remember which group you were part of.
-    const group = system.zones.find(zone => zone.coordinator.uuid === player.coordinator.uuid);
+    const group = system.zones.find((zone: any) => zone.coordinator.uuid === player.coordinator.uuid);
     if (group.members.length > 1) {
       logger.debug('Think its coordinator, will find uri later');
       groupToRejoin = group.id;
@@ -57,7 +57,7 @@ function singlePlayerAnnouncement(player, uri, volume, duration) {
     uri
   };
 
-  let abortTimer;
+  let abortTimer: any;
 
   if (!backupPresets[player.roomName]) {
     backupPresets[player.roomName] = [];
@@ -82,7 +82,7 @@ function singlePlayerAnnouncement(player, uri, volume, duration) {
     logger.debug('exactly 1 preset left', relevantBackupPreset);
 
     if (relevantBackupPreset.group) {
-      const zone = system.zones.find(zone => zone.id === relevantBackupPreset.group);
+      const zone = system.zones.find((zone: any) => zone.id === relevantBackupPreset.group);
       if (zone) {
         relevantBackupPreset.uri = `x-rincon:${zone.uuid}`;
       }
@@ -96,12 +96,12 @@ function singlePlayerAnnouncement(player, uri, volume, duration) {
       });
   }
 
-  let timer;
+  let timer: any;
   const restoreTimeout = duration + 2000;
   return system.applyPreset(ttsPreset)
     .then(() => {
-      return new Promise<void>((resolve) => {
-        const transportChange = (state) => {
+      return new Promise<void>((resolve: any) => {
+        const transportChange = (state: any) => {
           logger.debug(`Player changed to state ${state.playbackState}`);
           if (state.playbackState === 'STOPPED') {
             return resolve();
@@ -124,7 +124,7 @@ function singlePlayerAnnouncement(player, uri, volume, duration) {
       clearTimeout(abortTimer);
     })
     .then(prepareBackupPreset)
-    .catch((err) => {
+    .catch((err: any) => {
       logger.error(err);
       return prepareBackupPreset()
         .then(() => {

@@ -2,7 +2,7 @@ const fs = require('fs');
 const JSON5 = require('json5');
 const logger = require('sonos-discovery/lib/helpers/logger');
 
-function tryLoadJson(path) {
+function tryLoadJson(path:  any) {
   try {
     const fileContent = fs.readFileSync(path);
     const parsedContent = JSON5.parse(fileContent);

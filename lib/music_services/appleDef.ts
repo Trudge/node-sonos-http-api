@@ -1,5 +1,5 @@
 'use strict';
-const appleDef = {
+const appleDef: any = {
   country:   '&country=',
   search:    {
                album:   'https://itunes.apple.com/search?media=music&limit=1&entity=album&attribute=albumTerm&term=',
@@ -40,7 +40,7 @@ function authenticateService() {
   return Promise.resolve();
 }
 
-function getURI(type, id) {
+function getURI(type:  any, id:  any): any {
   if (type == 'album') {
     return `x-rincon-cpcontainer:0004206calbum%3a${id}`;
   } else 
@@ -63,7 +63,7 @@ var accountId = '';
 var accountSN = '';
 var country = '';
 
-function setService(player, p_accountId, p_accountSN, p_country)
+function setService(player:  any, p_accountId:  any, p_accountSN:  any, p_country:  any)
 {
   sid = player.system.getServiceId('Apple Music');
   serviceType = player.system.getServiceType('Apple Music');
@@ -72,7 +72,7 @@ function setService(player, p_accountId, p_accountSN, p_country)
   country = p_country;
 }
 
-function getSearchTerm(type, term, artist, album, track) {
+function getSearchTerm(type:  any, term:  any, artist:  any, album:  any, track:  any) {
   var newTerm = artist;
 
   if ((newTerm != '') && ((artist != '') || (track != ''))) {
@@ -90,7 +90,7 @@ function getSearchTerm(type, term, artist, album, track) {
   return newTerm;
 }
 
-function getMetadata(type, id, name, title) {
+function getMetadata(type:  any, id:  any, name:  any, title:  any) {
   const token = getServiceToken();
   const parentUri = appleDef.parent[type] + name;
   const objectType = appleDef.object[type];
@@ -107,7 +107,7 @@ function getMetadata(type, id, name, title) {
           <desc id="cdudn" nameSpace="urn:schemas-rinconnetworks-com:metadata-1-0/">${token}</desc></item></DIDL-Lite>`;
 }
 
-function getURIandMetadata(type, resList)
+function getURIandMetadata(type:  any, resList:  any)
 {
   var Id = '';
   var Title = '';
@@ -138,7 +138,7 @@ function getURIandMetadata(type, resList)
   return UaM;
 }
 
-function loadTracks(type, tracksJson) {
+function loadTracks(type:  any, tracksJson:  any) {
   var tracks = { count : 0,
                  isArtist : false,
                  queueTracks : []
@@ -146,7 +146,7 @@ function loadTracks(type, tracksJson) {
 
   if (tracksJson.resultCount > 0) {
     // Filtered list of tracks to play
-    tracks.queueTracks = tracksJson.results.reduce(function(tracksArray, track) {
+    tracks.queueTracks = tracksJson.results.reduce(function (tracksArray: any, track: any) {
       if (track.isStreamable) {
         var skip = false;
   
@@ -171,7 +171,7 @@ function loadTracks(type, tracksJson) {
   return tracks;
 }
 
-function isEmpty(type, resList)
+function isEmpty(type:  any, resList:  any)
 {
   return (resList.resultCount == 0);
 }

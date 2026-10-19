@@ -16,7 +16,7 @@ function simplifyPlayer(player: any): any {
 }
 
 function simplifyZones(zones: any[]): any[] {
-  return zones.map((zone) => ({
+  return zones.map((zone: any) => ({
     uuid: zone.uuid,
     coordinator: simplifyPlayer(zone.coordinator),
     members: zone.members.map(simplifyPlayer)

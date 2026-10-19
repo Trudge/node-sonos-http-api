@@ -10,9 +10,9 @@ if (settings.spotify) {
   clientSecret = settings.spotify.clientSecret;
 }
 
-var clientToken = null;
+let clientToken: any = null;
 
-const spotifyDef = {
+const spotifyDef: any = {
   country:   '&market=',
   search:    {
                album:   'https://api.spotify.com/v1/search?type=album&limit=1&q=album:',
@@ -49,11 +49,11 @@ const spotifyDef = {
   authenticate: authenticateService,
 }
 
-var  toBase64 = (string) => Buffer.from(string).toString('base64');
+var  toBase64 = (string: any) => Buffer.from(string).toString('base64');
 
 const SPOTIFY_TOKEN_URL = 'https://accounts.spotify.com/api/token';
 
-const mapResponse = (response) => ({
+const mapResponse = (response: any) => ({
   accessToken: response.access_token,
   tokenType: response.token_type,
   expiresIn: response.expires_in,
@@ -77,7 +77,7 @@ const auth = () => {
     headers: getHeaders(),
     body,
     signal: AbortSignal.timeout(10000)
-  }).then((response) => {
+  }).then((response: any) => {
     if (!response.ok) {
       throw new Error(`Unable to authenticate Spotify with client id: ${clientId}`);
     }
@@ -95,8 +95,8 @@ function getTokenHeaders() {
 }
 
 function authenticateService() {
-  return new Promise<void>((resolve, reject) => {
-    auth().then((response) => {
+  return new Promise<void>((resolve: any, reject: any) => {
+    auth().then((response: any) => {
       const accessToken = response.accessToken;
       clientToken = accessToken;
       resolve();
@@ -104,7 +104,7 @@ function authenticateService() {
   });
 }
 
-function getURI(type, id) {
+function getURI(type:  any, id:  any): any {
   if (type == 'album') {
     return `x-rincon-cpcontainer:0004206c${id}`;
   } else
@@ -130,7 +130,7 @@ var accountId = '';
 var accountSN = '';
 var country = '';
 
-function setService(player, p_accountId, p_accountSN, p_country)
+function setService(player:  any, p_accountId:  any, p_accountSN:  any, p_country:  any)
 {
   sid = player.system.getServiceId('Spotify');
   serviceType = player.system.getServiceType('Spotify');
@@ -139,7 +139,7 @@ function setService(player, p_accountId, p_accountSN, p_country)
   country = p_country;
 }
 
-function getSearchTerm(type, term, artist, album, track) {
+function getSearchTerm(type:  any, term:  any, artist:  any, album:  any, track:  any) {
   var newTerm = '';
 
   if (album != '') {
@@ -156,7 +156,7 @@ function getSearchTerm(type, term, artist, album, track) {
   return newTerm;
 }
 
-function getMetadata(type, id, name, title) {
+function getMetadata(type:  any, id:  any, name:  any, title:  any) {
   const token = getServiceToken();
   const parentUri = spotifyDef.parent[type] + name;
   const objectType = spotifyDef.object[type];
@@ -171,7 +171,7 @@ function getMetadata(type, id, name, title) {
           <desc id="cdudn" nameSpace="urn:schemas-rinconnetworks-com:metadata-1-0/">${token}</desc></item></DIDL-Lite>`;
 }
 
-function getURIandMetadata(type, resList)
+function getURIandMetadata(type:  any, resList:  any)
 {
   var Id = '';
   var Title = '';
@@ -205,7 +205,7 @@ function getURIandMetadata(type, resList)
   return UaM;
 }
 
-function loadTracks(type, tracksJson)
+function loadTracks(type:  any, tracksJson:  any)
 {
   var tracks = { count : 0,
                  isArtist : false,
@@ -214,7 +214,7 @@ function loadTracks(type, tracksJson)
 
   if (tracksJson.tracks.items.length > 0) {
     // Filtered list of tracks to play
-    tracks.queueTracks = tracksJson.tracks.items.reduce(function(tracksArray, track) {
+    tracks.queueTracks = tracksJson.tracks.items.reduce(function (tracksArray: any, track: any) {
       if (track.available_markets == null || track.available_markets.indexOf(country) != -1) {
         var skip = false;
 
@@ -239,7 +239,7 @@ function loadTracks(type, tracksJson)
   return tracks;
 }
 
-function isEmpty(type, resList)
+function isEmpty(type:  any, resList:  any)
 {
   var count = 0;
 

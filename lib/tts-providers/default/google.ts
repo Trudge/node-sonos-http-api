@@ -8,7 +8,7 @@ const settings = require('../../../src/settings');
 const logger = require('sonos-discovery/lib/helpers/logger');
 const { safeComponent } = require('../../../src/fs/safe-path');
 
-function google(phrase, language) {
+function google(phrase:  any, language:  any) {
   if (!language) {
     language = 'en';
   }
@@ -25,7 +25,7 @@ function google(phrase, language) {
   try {
     fs.accessSync(filepath, fs.R_OK);
     return fileDuration(filepath)
-      .then((duration) => {
+      .then((duration: any) => {
         return {
           duration,
           uri: expectedUri
@@ -35,14 +35,14 @@ function google(phrase, language) {
     logger.info(`announce file for phrase "${phrase}" does not seem to exist, downloading`);
   }
 
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve: any, reject: any) => {
     const file = fs.createWriteStream(filepath);
     const options = {
       "headers": { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/47.0.2526.106 Safari/537.36" },
       "host": "translate.google.com",
       "path": "/translate_tts?client=tw-ob&tl=" + language + "&q=" + encodeURIComponent(phrase)
     }
-    const req = http.request(options, function (response) {
+    const req = http.request(options, function (response: any) {
       if (response.statusCode < 300 && response.statusCode >= 200) {
         response.pipe(file);
         file.on('finish', function () {
@@ -56,14 +56,14 @@ function google(phrase, language) {
     });
 
     req.setTimeout(10000, () => req.destroy(new Error('Google TTS request timed out')));
-    req.on('error', function (err) {
+    req.on('error', function (err: any) {
       reject(err);
     }).end();
   })
     .then(() => {
       return fileDuration(filepath);
     })
-    .then((duration) => {
+    .then((duration: any) => {
       return {
         duration,
         uri: expectedUri

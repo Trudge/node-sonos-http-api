@@ -15,7 +15,7 @@ const DEFAULT_SETTINGS = {
   TextType: 'text'
 };
 
-function polly(phrase, voiceName) {
+function polly(phrase:  any, voiceName:  any) {
   if (!settings.aws) {
     return Promise.resolve();
 
@@ -43,7 +43,7 @@ function polly(phrase, voiceName) {
   try {
     fs.accessSync(filepath, fs.R_OK);
     return fileDuration(filepath)
-      .then((duration) => {
+      .then((duration: any) => {
         return {
           duration,
           uri: expectedUri
@@ -59,12 +59,12 @@ function polly(phrase, voiceName) {
   });
 
   return client.send(new SynthesizeSpeechCommand(synthesizeParameters))
-    .then((data) => data.AudioStream.transformToByteArray())
-    .then((audio) => {
+    .then((data: any) => data.AudioStream.transformToByteArray())
+    .then((audio: any) => {
       fs.writeFileSync(filepath, Buffer.from(audio));
       return fileDuration(filepath);
     })
-    .then((duration) => {
+    .then((duration: any) => {
       return {
         duration,
         uri: expectedUri

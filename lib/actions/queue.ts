@@ -1,5 +1,5 @@
 function simplify(items: any[]): any[] {
-  return items.map((item) => ({
+  return items.map((item: any) => ({
     title: item.title,
     artist: item.artist,
     album: item.album,

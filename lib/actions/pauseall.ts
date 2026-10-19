@@ -35,7 +35,7 @@ function doPauseAll(system: SonosSystemLike): Promise<unknown> {
 }
 
 function doResumeAll(system: SonosSystemLike): Promise<unknown> {
-  const promises = pausedPlayers.map((uuid) => system.getPlayerByUUID(uuid).play());
+  const promises = pausedPlayers.map((uuid: any) => system.getPlayerByUUID(uuid).play());
   pausedPlayers = [];
   return Promise.all(promises);
 }

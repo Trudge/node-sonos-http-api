@@ -7,7 +7,7 @@ const settings = require('../../src/settings');
 const logger = require('sonos-discovery/lib/helpers/logger');
 const { execFile } = require('child_process');
 
-function macSay(phrase, voice) {
+function macSay(phrase:  any, voice:  any) {
   if (!settings.macSay) {
     return Promise.resolve();
   }
@@ -34,7 +34,7 @@ function macSay(phrase, voice) {
   try {
     fs.accessSync(filepath, fs.R_OK);
     return fileDuration(filepath)
-      .then((duration) => {
+      .then((duration: any) => {
         return {
           duration,
           uri: expectedUri
@@ -44,7 +44,7 @@ function macSay(phrase, voice) {
     logger.info(`announce file for phrase "${phrase}" does not seem to exist, downloading`);
   }
 
- return new Promise((resolve, reject) => {
+ return new Promise((resolve: any, reject: any) => {
     //
     // For more information on the "say" command, type "man say" in Terminal
     // or go to
@@ -66,7 +66,7 @@ function macSay(phrase, voice) {
     }
     args.push('-o', filepath, phrase);
 
-    execFile('say', args, { timeout: 30000 }, function (error) {
+    execFile('say', args, { timeout: 30000 }, function (error: any) {
       if (error !== null) {
         reject(error);
       } else {
@@ -78,7 +78,7 @@ function macSay(phrase, voice) {
     .then(() => {
       return fileDuration(filepath);
     })
-    .then((duration) => {
+    .then((duration: any) => {
       return {
         duration,
         uri: expectedUri

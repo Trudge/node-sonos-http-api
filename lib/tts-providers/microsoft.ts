@@ -18,10 +18,10 @@ const DEFAULT_SETTINGS = {
   name: 'ZiraRUS'
 };
 
-let bearerToken;
+let bearerToken: any;
 let bearerExpires = Date.now();
 
-function generateBearerToken(apiKey) {
+function generateBearerToken(apiKey:  any) {
   return request({
     uri: 'https://api.cognitive.microsoft.com/sts/v1.0/issueToken',
     method: 'POST',
@@ -31,19 +31,19 @@ function generateBearerToken(apiKey) {
       'Content-Length': 0
     }
   })
-    .then((body) => {
+    .then((body: any) => {
       logger.debug(`Bearer token: body`);
       bearerToken = body;
       bearerExpires = Date.now() + TOKEN_EXPIRATION;
     });
 }
 
-function format(lang, gender, name, text) {
+function format(lang:  any, gender:  any, name:  any, text:  any) {
   const escapedText = xmlEntities.encodeNonUTF(text);
   return `<speak version='1.0' xml:lang='${lang}'><voice xml:lang='${lang}' xml:gender='${gender}' name='${name}'>${escapedText}</voice></speak>`;
 }
 
-function microsoft(phrase, voiceName) {
+function microsoft(phrase:  any, voiceName:  any) {
   if (!globalSettings.microsoft || !globalSettings.microsoft.key) {
     return Promise.resolve();
   }
@@ -62,7 +62,7 @@ function microsoft(phrase, voiceName) {
   try {
     fs.accessSync(filepath, fs.R_OK);
     return fileDuration(filepath)
-      .then((duration) => {
+      .then((duration: any) => {
         return {
           duration,
           uri: expectedUri
@@ -101,8 +101,8 @@ function microsoft(phrase, voiceName) {
       },
       body: ssml
     })
-      .then(res => {
-        return new Promise<void>((resolve) => {
+      .then((res: any) => {
+        return new Promise<void>((resolve: any) => {
 
           const file = fs.createWriteStream(filepath);
           res.pipe(file);
@@ -116,20 +116,20 @@ function microsoft(phrase, voiceName) {
       .then(() => {
         return fileDuration(filepath);
       })
-      .then((duration) => {
+      .then((duration: any) => {
         return {
           duration,
           uri: expectedUri
         };
       })
-      .catch((err) => {
+      .catch((err: any) => {
         logger.error(err);
         throw err;
       });
   });
 }
 
-const VOICE = {
+const VOICE: Record<string, any> = {
   Hoda: { language: 'ar-EG', gender: 'Female', font: 'Microsoft Server Speech Text to Speech Voice (ar-EG, Hoda)' },
   Naayf: { language: 'ar-SA', gender: 'Male', font: 'Microsoft Server Speech Text to Speech Voice (ar-SA, Naayf)' },
   Ivan: { language: 'bg-BG', gender: 'Male', font: 'Microsoft Server Speech Text to Speech Voice (bg-BG, Ivan)' },

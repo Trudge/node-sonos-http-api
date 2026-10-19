@@ -2,8 +2,8 @@
 const logger = require('sonos-discovery/lib/helpers/logger');
 const isRadioOrLineIn = require('../helpers/is-radio-or-line-in');
 
-function saveAll(system) {
-  const backupPresets = system.zones.map((zone) => {
+function saveAll(system:  any) {
+  const backupPresets = system.zones.map((zone: any) => {
     const coordinator = zone.coordinator;
     const state = coordinator.state;
     const preset: any = {
@@ -23,7 +23,7 @@ function saveAll(system) {
       preset.elapsedTime = state.elapsedTime;
     }
 
-    zone.members.forEach(function (player) {
+    zone.members.forEach(function (player: any) {
       if (coordinator.uuid != player.uuid)
         preset.players.push({ roomName: player.roomName, volume: player.state.volume });
     });
@@ -33,13 +33,13 @@ function saveAll(system) {
   });
 
   logger.trace('backup presets', backupPresets);
-  return backupPresets.sort((a,b) => {
+  return backupPresets.sort((a: any, b: any) => {
     return a.players.length < b.players.length;
   });
 }
 
-function announceAll(system, uri, volume, duration) {
-  let abortTimer;
+function announceAll(system:  any, uri:  any, volume:  any, duration:  any) {
+  let abortTimer: any;
 
   // Save all players
   var backupPresets = saveAll(system);
@@ -47,7 +47,7 @@ function announceAll(system, uri, volume, duration) {
   // find biggest group and all players
   const allPlayers: any[] = [];
   let biggestZone: any = {};
-  system.zones.forEach(function (zone) {
+  system.zones.forEach(function (zone: any) {
     if (!biggestZone.members || zone.members.length > biggestZone.members.length) {
       biggestZone = zone;
     }
@@ -57,7 +57,7 @@ function announceAll(system, uri, volume, duration) {
 
   allPlayers.push({ roomName: coordinator.roomName, volume });
 
-  system.players.forEach(player => {
+  system.players.forEach((player: any) => {
     if (player.uuid == coordinator.uuid) return;
     allPlayers.push({ roomName: player.roomName, volume });
   });
@@ -72,8 +72,8 @@ function announceAll(system, uri, volume, duration) {
     state: 'STOPPED'
   };
 
-  const oneGroupPromise = new Promise<void>((resolve) => {
-    const onTopologyChanged = (topology) => {
+  const oneGroupPromise = new Promise<void>((resolve: any) => {
+    const onTopologyChanged = (topology: any) => {
       if (topology.length === 1) {
         return resolve();
       }
@@ -92,8 +92,8 @@ function announceAll(system, uri, volume, duration) {
     })
     .then(() => {
       coordinator.play();
-      return new Promise<void>((resolve) => {
-        const transportChange = (state) => {
+      return new Promise<void>((resolve: any) => {
+        const transportChange = (state: any) => {
           logger.debug(`Player changed to state ${state.playbackState}`);
           if (state.playbackState === 'STOPPED') {
             return resolve();
@@ -113,12 +113,12 @@ function announceAll(system, uri, volume, duration) {
       clearTimeout(abortTimer);
     })
     .then(() => {
-      return backupPresets.reduce((promise, preset) => {
+      return backupPresets.reduce((promise: any, preset: any) => {
         logger.trace('Restoring preset', preset);
         return promise.then(() => system.applyPreset(preset));
       }, Promise.resolve());
     })
-    .catch((err) => {
+    .catch((err: any) => {
       logger.error(err.stack);
       throw err;
     });

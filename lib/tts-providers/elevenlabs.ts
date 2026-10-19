@@ -18,7 +18,7 @@ const DEFAULT_SETTINGS = {
 
 // Provider developed based on structure from aws-polly.js.
 // In this tts provider language argument from uri is used to inject custom voiceId
-function eleven(phrase, voiceId) {
+function eleven(phrase:  any, voiceId:  any) {
   if (!settings.elevenlabs) {
     return Promise.resolve();
   }
@@ -46,7 +46,7 @@ function eleven(phrase, voiceId) {
   try {
     fs.accessSync(filepath, fs.R_OK);
     return fileDuration(filepath)
-      .then((duration) => {
+      .then((duration: any) => {
         return {
           duration,
           uri: expectedUri
@@ -78,17 +78,17 @@ function eleven(phrase, voiceId) {
     body,
     signal: AbortSignal.timeout(15000)
   })
-    .then((response) => {
+    .then((response: any) => {
       if (!response.ok) {
         throw new Error(`ElevenLabs TTS failed with status ${response.status}`);
       }
       return response.arrayBuffer();
     })
-    .then((audio) => {
+    .then((audio: any) => {
       fs.writeFileSync(filepath, Buffer.from(audio));
       return fileDuration(filepath);
     })
-    .then((duration) => {
+    .then((duration: any) => {
       return {
         duration,
         uri: expectedUri

@@ -7,7 +7,7 @@ const fileDuration = require('../helpers/file-duration');
 const settings = require('../../src/settings');
 const { safeComponent } = require('../../src/fs/safe-path');
 
-function voicerss(phrase, language) {
+function voicerss(phrase:  any, language:  any) {
   if (!settings.voicerss) {
     return Promise.resolve();
 
@@ -29,7 +29,7 @@ function voicerss(phrase, language) {
   try {
     fs.accessSync(filepath, fs.R_OK);
     return fileDuration(filepath)
-      .then((duration) => {
+      .then((duration: any) => {
         return {
           duration,
           uri: expectedUri
@@ -39,9 +39,9 @@ function voicerss(phrase, language) {
     console.log(`announce file for phrase "${phrase}" does not seem to exist, downloading`);
   }
 
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve: any, reject: any) => {
     var file = fs.createWriteStream(filepath);
-    const req = https.get(ttsRequestUrl, function (response) {
+    const req = https.get(ttsRequestUrl, function (response: any) {
       if (response.statusCode < 300 && response.statusCode >= 200) {
         response.pipe(file);
         file.on('finish', function () {
@@ -54,14 +54,14 @@ function voicerss(phrase, language) {
       }
     });
     req.setTimeout(10000, () => req.destroy(new Error('VoiceRSS request timed out')));
-    req.on('error', function (err) {
+    req.on('error', function (err: any) {
       reject(err);
     });
   })
     .then(() => {
       return fileDuration(filepath);
     })
-    .then((duration) => {
+    .then((duration: any) => {
       return {
         duration,
         uri: expectedUri

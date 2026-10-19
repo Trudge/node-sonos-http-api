@@ -2,21 +2,21 @@
 const Fuse = require('fuse.js');
 const channels = require('../sirius-channels.json');
 
-function getSiriusXmMetadata(id, parent, title) {
+function getSiriusXmMetadata(id:  any, parent:  any, title:  any) {
   return `<DIDL-Lite xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:upnp="urn:schemas-upnp-org:metadata-1-0/upnp/"
         xmlns:r="urn:schemas-rinconnetworks-com:metadata-1-0/" xmlns="urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/">
         <item id="00092120r%3a${id}" parentID="${parent}" restricted="true"><dc:title>${title}</dc:title><upnp:class>object.item.audioItem.audioBroadcast</upnp:class>
         <desc id="cdudn" nameSpace="urn:schemas-rinconnetworks-com:metadata-1-0/">_</desc></item></DIDL-Lite>`;
 }
 
-function getSiriusXmUri(id) {
+function getSiriusXmUri(id:  any) {
   return `x-sonosapi-hls:r%3a${id}?sid=37&flags=8480&sn=11`;
 }
 
 const replaceArray = ['ñ|n','á|a','ó|o','è|e','ë|e','/| ','-| ','siriusxm|sirius XM','sxm|SXM','cnn|CNN','hln|HLN','msnbc|MSNBC','bbc|BBC',
                     'ici|ICI','prx|PRX','cbc|CBC','npr|NPR','espn|ESPN',' ny| NY','kiis|KIIS','&|and','ami|AMI','z1|Z1','2k|2K','bb |BB '];
 
-function adjustStation(name) {
+function adjustStation(name: any) {
   name = name.toLowerCase();
   for (var i=0;i < replaceArray.length;i++)
     name = name.replace(replaceArray[i].split('|')[0],replaceArray[i].split('|')[1]);
@@ -24,15 +24,15 @@ function adjustStation(name) {
   return name;
 }
 
-function siriusXM(player, values) {
+function siriusXM(player: any, values: any) {
   var auth = '';
   var results = [];
 
   // Used to generate channel data for the channels array. Results are sent to the console after loading Sonos Favorites with a number of SiriusXM Channels 
   if (values[0] == 'data') {
     return player.system.getFavorites()
-    .then((favorites) => {
-      return favorites.reduce(function(promise, item) {
+    .then((favorites: any) => {
+      return favorites.reduce(function (promise: any, item: any) {
         if (item.uri.startsWith('x-sonosapi-hls:')) {
           var title = item.title.replace("'",'');
 
@@ -48,10 +48,10 @@ function siriusXM(player, values) {
   } else
   // Used to send a list of channel numbers specified below in channels for input into an Alexa slot
   if (values[0] == 'channels') {
-    var cList = channels.map(function(channel) {
+    var cList = channels.map(function (channel: any) {
       return channel.channelNum;
     });
-    cList.sort(function(a,b) {return a-b;}).map(function(channel) {
+    cList.sort(function (a: any, b: any) {return a-b;}).map(function (channel: any) {
       console.log(channel);
     });
 
@@ -59,7 +59,7 @@ function siriusXM(player, values) {
   } else
   // Used to send a list of station titles specified below in channels for input into an Alexa slot
   if (values[0] == 'stations') {
-    var sList = channels.map(function(channel){
+    var sList = channels.map(function (channel: any) {
       console.log(adjustStation(channel.title));
     });
     return Promise.resolve("success");
@@ -80,6 +80,6 @@ function siriusXM(player, values) {
   }
 }
 
-module.exports = function (api) {
+module.exports = function (api: any) {
   api.registerAction('siriusxm', siriusXM);
 };

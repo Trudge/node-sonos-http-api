@@ -1,13 +1,13 @@
 'use strict';
 
-function getSpotifyMetadata(uri, serviceType) {
+function getSpotifyMetadata(uri:  any, serviceType:  any) {
   return `<DIDL-Lite xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:upnp="urn:schemas-upnp-org:metadata-1-0/upnp/"
         xmlns:r="urn:schemas-rinconnetworks-com:metadata-1-0/" xmlns="urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/">
         <item id="00030020${uri}" restricted="true"><upnp:class>object.item.audioItem.musicTrack</upnp:class>
         <desc id="cdudn" nameSpace="urn:schemas-rinconnetworks-com:metadata-1-0/">SA_RINCON${serviceType}_X_#Svc${serviceType}-0-Token</desc></item></DIDL-Lite>`;
 }
 
-function spotify(player, values) {
+function spotify(player: any, values: any) {
   const action = values[0];
   const spotifyUri = values[1];
   const encodedSpotifyUri = encodeURIComponent(spotifyUri);
@@ -31,7 +31,7 @@ function spotify(player, values) {
     let promise = Promise.resolve();
     return promise.then(() => player.coordinator.setAVTransport(`x-rincon-queue:${player.coordinator.uuid}#0`))
     .then(() => player.coordinator.addURIToQueue(uri, metadata, true, nextTrackNo))
-    .then((addToQueueStatus) => player.coordinator.trackSeek(addToQueueStatus.firsttracknumberenqueued))
+    .then((addToQueueStatus: any) => player.coordinator.trackSeek(addToQueueStatus.firsttracknumberenqueued))
     .then(() => player.coordinator.play());
 
   } else if (action == 'next') {
@@ -40,6 +40,6 @@ function spotify(player, values) {
   }
 }
 
-module.exports = function (api) {
+module.exports = function (api: any) {
   api.registerAction('spotify', spotify);
 }

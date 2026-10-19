@@ -9,7 +9,7 @@ const eliteDef = deezerDef.init(true);
 const libraryDef = require('../music_services/libraryDef');
 
 const musicServices = ['apple','spotify','deezer','elite','library'];
-const serviceNames = {apple:'Apple Music',spotify:'Spotify',deezer:'Deezer',elite:'Deezer',library:'Library'};
+const serviceNames: Record<string, string> = {apple:'Apple Music',spotify:'Spotify',deezer:'Deezer',elite:'Deezer',library:'Library'};
 const musicTypes = ['album','song','station','load','playlist'];
 
 var country = '';
@@ -17,7 +17,7 @@ var accountId = '';
 var accountSN = '';
 var searchType = 0;
 
-function getService(service) {
+function getService(service:  any) {
   if (service == 'apple') {
     return appleDef;
   } else
@@ -35,13 +35,13 @@ function getService(service) {
   }
 }
 
-function getAccountId(player, service)
+function getAccountId(player:  any, service:  any)
 {
   accountId = '';
   
   if (service != 'library') {
     return fetchText(player.baseUrl + '/status/accounts')
-      .then((res) => {
+      .then((res: any) => {
         var actLoc = res.indexOf(player.system.getServiceType(serviceNames[service]));
        
         if (actLoc != -1) {
@@ -59,7 +59,7 @@ function getAccountId(player, service)
   }
 }
 
-async function fetchJson(url, headers = {}) {
+async function fetchJson(url:  any, headers: any = {}) {
   const response = await fetch(url, {
     headers,
     signal: AbortSignal.timeout(10000)
@@ -70,7 +70,7 @@ async function fetchJson(url, headers = {}) {
   return response.json();
 }
 
-async function fetchText(url, headers = {}) {
+async function fetchText(url:  any, headers: any = {}) {
   const response = await fetch(url, {
     headers,
     signal: AbortSignal.timeout(10000)
@@ -81,7 +81,7 @@ async function fetchText(url, headers = {}) {
   return response.text();
 }
 
-function doSearch(service, type, term)
+function doSearch(service:  any, type:  any, term:  any)
 {
   var serviceDef = getService(service);
   var url = serviceDef.search[type];
@@ -129,7 +129,7 @@ function doSearch(service, type, term)
   } else
   if ((serviceDef.country != '') && (country == '')) {
     return fetchJson('https://ipinfo.io/json')
-           .then((res) => {
+           .then((res: any) => {
              country = res.country;
              url += serviceDef.country + country;
              return authenticate().then(() => fetchJson(url, serviceDef.headers()));
@@ -152,7 +152,7 @@ Array.prototype.shuffle=function(){
   return this;
 }
 
-function loadTracks(player, service, type, tracksJson)
+function loadTracks(player:  any, service:  any, type:  any, tracksJson:  any)
 {
   var tracks = getService(service).tracks(type, tracksJson);
   
@@ -165,10 +165,10 @@ function loadTracks(player, service, type, tracksJson)
       if (tracks.count > 1) {
         var artistCount = 1;
         var trackCount = 1;
-        var artists = tracks.queueTracks.map(function(track) {
+        var artists = tracks.queueTracks.map(function (track: any) {
               return track.artistName.toLowerCase();
             }).sort();
-        var songs = tracks.queueTracks.map(function(track) {
+        var songs = tracks.queueTracks.map(function (track: any) {
               return track.trackName.toLowerCase();
             }).sort();
 
@@ -201,7 +201,7 @@ function loadTracks(player, service, type, tracksJson)
 }
 
 
-function musicSearch(player, values) {
+function musicSearch(player:  any, values:  any) {
   const service = values[0];
   const type = values[1];
   const term = values[2];
@@ -223,13 +223,13 @@ function musicSearch(player, values) {
     .then(() => {
       return doSearch(service, type, term);
     })
-    .then((resList) => {
+    .then((resList: any) => {
       const serviceDef = getService(service);
       serviceDef.service(player, accountId, accountSN, country);
       if (serviceDef.empty(type, resList)) {
         return Promise.reject('No matches were found');
       } else {
-        var UaM = null; 
+        let UaM: any = null; 
       
         if (type == 'station') {
           UaM = serviceDef.urimeta(type, resList);
@@ -257,7 +257,7 @@ function musicSearch(player, values) {
                 .then(() => player.coordinator.play())
                 .then(() => {
                 // Do not return promise since we want to be considered done from the calling context
-                  tracks.queueTracks.slice(1).reduce((promise, track, index) => {
+                  tracks.queueTracks.slice(1).reduce((promise: any, track: any, index: any) => {
                     return promise.then(() => player.coordinator.addURIToQueue(track.uri, track.metadata, true, index + 2));
                   }, Promise.resolve());
                 });
@@ -266,7 +266,7 @@ function musicSearch(player, values) {
               var nextTrackNo = 0;
 
               return player.coordinator.getQueue(0, 1)
-                .then((queue) => {
+                .then((queue: any) => {
                   empty = (queue.length == 0);
                   nextTrackNo = (empty) ? 1 : player.coordinator.state.trackNo + 1;
                 })
@@ -285,7 +285,7 @@ function musicSearch(player, values) {
     });
 }
 
-module.exports = function (api) {
+module.exports = function (api: any) {
   api.registerAction('musicsearch', musicSearch);
   libraryDef.read();
 };
