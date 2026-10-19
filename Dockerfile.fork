@@ -16,6 +16,12 @@ RUN apk add --no-cache curl
 COPY node-sonos-http-api/ /app/
 COPY node-sonos-discovery/ /app/sonos-discovery/
 
+# Build the discovery dependency first so the file: dependency exposes dist/.
+RUN cd /app/sonos-discovery \
+    && npm install --ignore-scripts --no-audit --no-fund \
+    && npm run build \
+    && rm -rf node_modules /tmp/* /root/.npm
+
 RUN npm install --ignore-scripts --no-audit --no-fund \
     && npm run build \
     && rm -rf /tmp/* /root/.npm
