@@ -20,7 +20,7 @@ SONOS HTTP API
 
 A simple http based API for controlling your Sonos system.
 
-There is a simple sandbox at /docs (incomplete atm)
+The landing page at `/` lists the available endpoints.
 
 USAGE
 -----
@@ -322,7 +322,8 @@ Available options are:
 * port: change the listening port
 * ip: change the listening IP
 * https: use https which requires a key and certificate or pfx file
-* auth: require basic auth credentials which requires a username and password
+* auth: optional basic auth credentials (username/password) protecting the API and static files
+* cors: optional origin or array of origins allowed to call the API (default: no CORS)
 * announceVolume: the percentual volume use when invoking say/sayall without any volume parameter
 * presetDir: absolute path to look for presets (folder must exist!)
 * household: when theres multiple sonos accounts on one network (example: Sonos_ab7d67898dcc5a6d, find it in [Your sonos IP]:1400/status/zp). Note that the value after the '.' should not be removed. See more info here: https://github.com/jishi/node-sonos-http-api/issues/783
@@ -352,10 +353,6 @@ Example:
 	    "password": "password"
 	  },
 	  "announceVolume": 40,
-	  "pandora": {
-	    "username": "your-pandora-account-email-address",
-	    "password": "your-pandora-password"
-	  },
 	  "spotify": {
 	    "clientId": "your-spotify-application-clientId",
 	    "clientSecret": "your-spotify-application-clientSecret"
@@ -997,27 +994,6 @@ You can specify a SiriusXM channel number or station name and the station will b
 ```
 
 
-Pandora
-----------------------
-Perform a search for one of your Pandora stations and begin playing. Give the currently playing song a thumbs up or thumbs down. Requires a valid Pandora account and credentials.
-
-The following endpoints are available:
-
-```
-/RoomName/pandora/play/{station name}     Plays the closest match to the specified station name in your list of Pandora stations
-/RoomName/pandora/thumbsup                Gives the current playing Pandora song a thumbs up
-/RoomName/pandora/thumbsdown              Gives the current playing Pandora song a thumbs down
-```
-
-Your Pandora credentials need to be added to the settings.json file
-   ```
-          ,
-          "pandora": {
-            "username": "your-pandora-account-email-address",
-            "password": "your-pandora-password"
-          }
-  ```
-
 
 Tunein
 ----------------------
@@ -1052,7 +1028,7 @@ The following endpoint is available:
 Service options: apple, spotify, deezer, elite, library
 
 Type options for apple, spotify, deezer, and elite: album, song, station, playlist
-Station plays a Pandora like artist radio station for a specified artist name.
+Station plays an artist radio station for a specified artist name.
 Apple Music also supports song titles and artist name + song title.
 
 Type options for library: album, song, load

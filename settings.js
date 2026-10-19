@@ -6,6 +6,9 @@ const tryLoadJson = require('./lib/helpers/try-load-json');
 
 function merge(target, source) {
   Object.keys(source).forEach((key) => {
+    if (key === '__proto__' || key === 'constructor' || key === 'prototype') {
+      return;
+    }
     if ((Object.getPrototypeOf(source[key]) === Object.prototype) && (target[key] !== undefined)) {
       merge(target[key], source[key]);
     } else {
@@ -29,7 +32,14 @@ const settingsFileFullPath = path.resolve(__dirname, 'settings.json');
 const userSettings = tryLoadJson(settingsFileFullPath);
 merge(settings, userSettings);
 
-logger.debug(settings);
+try {
+  const mode = fs.statSync(settingsFileFullPath).mode & 0o777;
+  if (mode & 0o077) {
+    logger.warn(`settings.json is accessible by group/others (mode ${mode.toString(8)}); it may contain credentials. Run: chmod 600 settings.json`);
+  }
+} catch (err) {
+  // Missing settings file is normal; defaults are used.
+}
 
 if (!fs.existsSync(settings.webroot + '/tts/')) {
   fs.mkdirSync(settings.webroot + '/tts/');
