@@ -8,7 +8,8 @@
     "build": "tsc",
     "typecheck": "tsc --noEmit",
     "lint": "eslint lib",
-    "test": "tsx --test test/*.test.js test/*.test.ts"
+    "test": "tsx --test test/*.test.js test/*.test.ts",
+    "coverage": "c8 --all --include='src/report/**/*.ts' --include='lib/helpers/safe-path.js' --include='lib/actions/report.js' --exclude='**/*.d.ts' --check-coverage --lines 80 --functions 90 --branches 60 --reporter=text --reporter=lcov npm test"
   },
   "author": "Jimmy Shimizu <jimmy@shimizu.se>",
   "repository": {
@@ -34,6 +35,7 @@
   "license": "MIT",
   "devDependencies": {
     "@types/node": "^26.6.5",
+    "c8": "^12.0.0",
     "eslint": "^4.8.0",
     "eslint-config-airbnb-base": "^12.0.1",
     "eslint-plugin-import": "^2.7.0",

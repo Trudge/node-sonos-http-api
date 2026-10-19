@@ -56,6 +56,21 @@ GET /report/export
 `/report/export` returns a versioned snapshot without credentials. Player
 identity fields come from each device's local `device_description.xml`.
 
+Development
+-----------
+
+```bash
+npm install
+npm run build       # TypeScript -> dist/
+npm test            # node:test via tsx
+npm run typecheck   # tsc --noEmit
+npm run coverage    # c8 with coverage thresholds
+npm run dev         # tsx server.js
+```
+
+The Docker image builds TypeScript in a builder stage and runs the compiled
+`dist/` output in the runtime stage.
+
 USAGE
 -----
 

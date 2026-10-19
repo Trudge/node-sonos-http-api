@@ -40,17 +40,8 @@ function serviceTypes(xml: string): string[] {
   return types;
 }
 
-export async function getIdentity(player: any): Promise<DeviceIdentity> {
-  const cached = cache.get(player.uuid);
-  const now = Date.now();
-  if (cached && cached.expires > now) return cached.value;
-
-  try {
-    const xml = await request({
-      uri: `${player.baseUrl}/xml/device_description.xml`,
-      timeout: 4000
-    });
-    const value: DeviceIdentity = {
+export function parseIdentityXml(xml: string): DeviceIdentity {
+  return {
       available: true,
       udn: firstTag(xml, 'UDN'),
       modelName: firstTag(xml, 'modelName'),
@@ -63,7 +54,20 @@ export async function getIdentity(player: any): Promise<DeviceIdentity> {
       macAddress: firstTag(xml, 'MACAddress'),
       zoneType: firstTag(xml, 'zoneType'),
       services: serviceTypes(xml)
-    };
+  };
+}
+
+export async function getIdentity(player: any): Promise<DeviceIdentity> {
+  const cached = cache.get(player.uuid);
+  const now = Date.now();
+  if (cached && cached.expires > now) return cached.value;
+
+  try {
+    const xml = await request({
+      uri: `${player.baseUrl}/xml/device_description.xml`,
+      timeout: 4000
+    });
+    const value = parseIdentityXml(xml);
     cache.set(player.uuid, { expires: now + CACHE_TTL_MS, value });
     return value;
   } catch (err) {

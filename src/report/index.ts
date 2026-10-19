@@ -108,9 +108,17 @@ async function reportPlayers(system: any): Promise<any[]> {
   return results.map((result, index) => {
     if (result.status === 'fulfilled') return result.value;
     const player = system.players[index];
+    let uuid: string | null = null;
+    let roomName: string | null = null;
+    try {
+      uuid = player.uuid;
+      roomName = player.roomName;
+    } catch (err) {
+      // The player object itself is broken; still return a partial entry.
+    }
     return {
-      uuid: player.uuid,
-      roomName: player.roomName,
+      uuid,
+      roomName,
       available: false,
       error: result.reason && result.reason.message ? result.reason.message : 'Unable to read player'
     };
@@ -135,7 +143,7 @@ async function reportPlayer(system: any, room: string): Promise<any> {
   return playerReport(player);
 }
 
-function capabilityFlags(identity: DeviceIdentity): Record<string, boolean> {
+export function capabilityFlags(identity: DeviceIdentity): Record<string, boolean> {
   const services = identity.services.map((service) => service.toLowerCase());
   return {
     alarmClock: services.some((service) => service.includes(':alarmclock:')),
