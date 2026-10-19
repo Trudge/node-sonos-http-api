@@ -22,6 +22,34 @@ A simple http based API for controlling your Sonos system.
 
 The landing page at `/` lists the available endpoints.
 
+Read-only reporting
+--------------------
+
+The `/report` endpoints return JSON and never change player state:
+
+```
+GET /report/summary
+GET /report/system
+GET /report/zones
+GET /report/groups
+GET /report/players
+GET /report/players/{room}
+GET /report/players/{room}/state
+GET /report/players/{room}/capabilities
+GET /report/players/{room}/queue/{limit}/{offset}
+GET /report/sources
+GET /report/favorites
+GET /report/playlists
+GET /report/services
+GET /report/alarms
+GET /report/library/{room}/{objectId}/{start}/{limit}
+GET /report/diagnostics
+GET /report/export
+```
+
+`/report/export` returns a versioned snapshot without credentials. Player
+identity fields come from each device's local `device_description.xml`.
+
 USAGE
 -----
 
