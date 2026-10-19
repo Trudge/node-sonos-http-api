@@ -1,3 +1,4 @@
+// @ts-nocheck
 'use strict';
 const logger = require('sonos-discovery/lib/helpers/logger');
 const isRadioOrLineIn = require('../helpers/is-radio-or-line-in');

@@ -1,3 +1,4 @@
+// @ts-nocheck
 'use strict';
 const crypto = require('crypto');
 const fs = require('fs');
@@ -5,9 +6,9 @@ const path = require('path');
 const fileDuration = require('../helpers/file-duration');
 const request = require('sonos-discovery/lib/helpers/request');
 const logger = require('sonos-discovery/lib/helpers/logger');
-const globalSettings = require('../../settings');
+const globalSettings = require('../../src/settings');
 const XmlEntities = require('html-entities').XmlEntities;
-const { safeComponent } = require('../helpers/safe-path');
+const { safeComponent } = require('../../src/fs/safe-path');
 
 const xmlEntities = new XmlEntities();
 

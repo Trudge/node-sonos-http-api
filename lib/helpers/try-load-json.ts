@@ -1,3 +1,4 @@
+// @ts-nocheck
 const fs = require('fs');
 const JSON5 = require('json5');
 const logger = require('sonos-discovery/lib/helpers/logger');

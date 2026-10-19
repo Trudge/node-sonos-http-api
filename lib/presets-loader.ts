@@ -1,10 +1,11 @@
+// @ts-nocheck
 'use strict';
 const fs = require('fs');
 const util = require('util');
 const path = require('path');
 const logger = require('sonos-discovery/lib/helpers/logger');
 const tryLoadJson = require('./helpers/try-load-json');
-const settings = require('../settings');
+const settings = require('../src/settings');
 
 const PRESETS_PATH = settings.presetDir;
 const PRESETS_FILENAME = `${__dirname}/../presets.json`;

@@ -51,7 +51,7 @@ test('HTTP auth, CORS, methods, headers, and rate limiting', async () => {
     cors: ['http://allowed.example']
   }));
 
-  const child = spawn(process.execPath, ['--import', 'tsx', 'server.js'], {
+  const child = spawn(process.execPath, ['--import', 'tsx', 'src/server.ts'], {
     cwd: REPO_ROOT,
     env: { ...process.env, APP_ROOT: root },
     stdio: ['ignore', 'pipe', 'pipe']

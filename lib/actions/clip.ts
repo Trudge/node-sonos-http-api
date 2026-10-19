@@ -2,9 +2,9 @@ import path = require('path');
 import type { ActionApi, PlayerLike } from '../../src/types/actions';
 
 const fileDuration = require('../helpers/file-duration');
-const settings = require('../../settings');
+const settings = require('../../src/settings');
 const singlePlayerAnnouncement = require('../helpers/single-player-announcement');
-const { resolveClipPath } = require('../helpers/safe-path');
+const { resolveClipPath } = require('../../src/fs/safe-path');
 
 let port: number;
 const LOCAL_PATH_LOCATION = path.join(settings.webroot, 'clips');

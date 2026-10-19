@@ -1,6 +1,4 @@
-'use strict';
-
-function isRadioOrLineIn(uri) {
+function isRadioOrLineIn(uri: string): boolean {
   return uri.startsWith('x-sonosapi-stream:') ||
     uri.startsWith('x-sonosapi-radio:') ||
     uri.startsWith('pndrradio:') ||
@@ -11,4 +9,4 @@ function isRadioOrLineIn(uri) {
     uri.startsWith('x-rincon-mp3radio:');
 }
 
-module.exports = isRadioOrLineIn;
+export = isRadioOrLineIn;

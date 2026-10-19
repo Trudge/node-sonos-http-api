@@ -1,6 +1,7 @@
+// @ts-nocheck
 'use strict';
 
-const settings = require('../../settings');
+const settings = require('../../src/settings');
 
 var clientId = "";
 var clientSecret = "";

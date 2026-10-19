@@ -1,3 +1,4 @@
+// @ts-nocheck
 'use strict';
 const fs = require("fs");
 const isRadioOrLineIn = require('../helpers/is-radio-or-line-in');

@@ -3,7 +3,7 @@ const test = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
-const { safeComponent, resolveClipPath } = require('../lib/helpers/safe-path');
+const { safeComponent, resolveClipPath } = require('../src/fs/safe-path');
 
 const clipsDir = path.join(__dirname, '..', 'static', 'clips');
 
@@ -25,12 +25,12 @@ test('resolveClipPath only accepts audio files in the clips directory', () => {
 });
 
 test('macOS TTS provider never uses a shell', () => {
-  const source = fs.readFileSync(path.join(__dirname, '..', 'lib/tts-providers/mac-os.js'), 'utf8');
+  const source = fs.readFileSync(path.join(__dirname, '..', 'lib/tts-providers/mac-os.ts'), 'utf8');
   assert.match(source, /execFile\(/);
   assert.doesNotMatch(source, /\bexec\(/);
 });
 
 test('VoiceRSS uses HTTPS', () => {
-  const source = fs.readFileSync(path.join(__dirname, '..', 'lib/tts-providers/voicerss.js'), 'utf8');
+  const source = fs.readFileSync(path.join(__dirname, '..', 'lib/tts-providers/voicerss.ts'), 'utf8');
   assert.match(source, /https:\/\/api\.voicerss\.org/);
 });

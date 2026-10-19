@@ -5,7 +5,7 @@
     "moduleResolution": "node16",
     "rootDir": ".",
     "outDir": "dist",
-    "allowJs": true,
+    "allowJs": false,
     "checkJs": false,
     "strict": true,
     "esModuleInterop": true,
@@ -17,11 +17,8 @@
     ]
   },
   "include": [
-    "server.js",
-    "settings.js",
-    "lib/**/*.js",
-    "src/**/*.ts",
-    "lib/**/*.ts"
+    "lib/**/*.ts",
+    "src/**/*.ts"
   ],
   "exclude": [
     "node_modules",

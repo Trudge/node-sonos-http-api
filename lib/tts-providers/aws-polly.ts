@@ -1,3 +1,4 @@
+// @ts-nocheck
 'use strict';
 const crypto = require('crypto');
 const fs = require('fs');
@@ -5,9 +6,9 @@ const http = require('http');
 const path = require('path');
 const { PollyClient, SynthesizeSpeechCommand } = require('@aws-sdk/client-polly');
 const fileDuration = require('../helpers/file-duration');
-const settings = require('../../settings');
+const settings = require('../../src/settings');
 const logger = require('sonos-discovery/lib/helpers/logger');
-const { safeComponent } = require('../helpers/safe-path');
+const { safeComponent } = require('../../src/fs/safe-path');
 
 const DEFAULT_SETTINGS = {
   OutputFormat: 'mp3',

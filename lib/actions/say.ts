@@ -2,7 +2,7 @@ import type { ActionApi, PlayerLike } from '../../src/types/actions';
 
 const tryDownloadTTS = require('../helpers/try-download-tts');
 const singlePlayerAnnouncement = require('../helpers/single-player-announcement');
-const settings = require('../../settings');
+const settings = require('../../src/settings');
 
 let port: number;
 let system: any;

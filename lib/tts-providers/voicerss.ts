@@ -1,11 +1,12 @@
+// @ts-nocheck
 'use strict';
 const crypto = require('crypto');
 const fs = require('fs');
 const https = require('https');
 const path = require('path');
 const fileDuration = require('../helpers/file-duration');
-const settings = require('../../settings');
-const { safeComponent } = require('../helpers/safe-path');
+const settings = require('../../src/settings');
+const { safeComponent } = require('../../src/fs/safe-path');
 
 function voicerss(phrase, language) {
   if (!settings.voicerss) {

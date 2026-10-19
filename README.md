@@ -65,7 +65,7 @@ npm run build       # TypeScript -> dist/
 npm test            # node:test via tsx
 npm run typecheck   # tsc --noEmit
 npm run coverage    # c8 with coverage thresholds
-npm run dev         # tsx server.js
+npm run dev         # tsx src/server.ts
 
 # Live endpoint and detected-player checks (skipped if unreachable)
 SONOS_LIVE_URL=http://127.0.0.1:5005 npm test

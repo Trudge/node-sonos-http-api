@@ -1,3 +1,4 @@
+// @ts-nocheck
 'use strict';
 function getMetadata(id, parentUri, type, title) {
   return `<DIDL-Lite xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:upnp="urn:schemas-upnp-org:metadata-1-0/upnp/"

@@ -1,9 +1,10 @@
+// @ts-nocheck
 'use strict';
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const fileDuration = require('../helpers/file-duration');
-const settings = require('../../settings');
+const settings = require('../../src/settings');
 const logger = require('sonos-discovery/lib/helpers/logger');
 const { execFile } = require('child_process');
 
