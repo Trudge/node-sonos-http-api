@@ -3,9 +3,12 @@
   "version": "1.7.0",
   "description": "A simple node app for controlling a Sonos system with basic HTTP requests",
   "scripts": {
-    "start": "node server.js",
+    "start": "node dist/server.js",
+    "dev": "tsx server.js",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
     "lint": "eslint lib",
-    "test": "node --test test/*.test.js"
+    "test": "tsx --test test/*.test.js test/*.test.ts"
   },
   "author": "Jimmy Shimizu <jimmy@shimizu.se>",
   "repository": {
@@ -27,11 +30,17 @@
   "engines": {
     "node": ">=20 <23"
   },
-  "main": "lib/sonos-http-api.js",
+  "main": "dist/server.js",
   "license": "MIT",
   "devDependencies": {
+    "@types/node": "^26.6.5",
     "eslint": "^4.8.0",
     "eslint-config-airbnb-base": "^12.0.1",
-    "eslint-plugin-import": "^2.7.0"
-  }
+    "eslint-plugin-import": "^2.7.0",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  },
+  "contributors": [
+    "Trudge and contributors (fork modifications)"
+  ]
 }

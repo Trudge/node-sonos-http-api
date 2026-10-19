@@ -17,18 +17,23 @@ function merge(target, source) {
   });
 }
 
+const DEFAULT_APP_ROOT = path.basename(__dirname) === 'dist'
+  ? path.resolve(__dirname, '..')
+  : __dirname;
+const APP_ROOT = process.env.APP_ROOT || DEFAULT_APP_ROOT;
+
 var settings = {
   port: 5005,
   ip: "0.0.0.0",
   securePort: 5006,
-  cacheDir: path.resolve(__dirname, 'cache'),
-  webroot: path.resolve(__dirname, 'static'),
-  presetDir: path.resolve(__dirname, 'presets'),
+  cacheDir: path.resolve(APP_ROOT, 'cache'),
+  webroot: path.resolve(APP_ROOT, 'static'),
+  presetDir: path.resolve(APP_ROOT, 'presets'),
   announceVolume: 40
 };
 
 // load user settings
-const settingsFileFullPath = path.resolve(__dirname, 'settings.json');
+const settingsFileFullPath = path.resolve(APP_ROOT, 'settings.json');
 const userSettings = tryLoadJson(settingsFileFullPath);
 merge(settings, userSettings);
 

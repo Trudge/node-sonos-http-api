@@ -6,16 +6,39 @@
 #
 #   docker build -f node-sonos-http-api/Dockerfile.fork -t sonos-http-api:fork /home/media/pr-work
 
-FROM node:22-alpine@sha256:0a7108bf6c7bf5de370ffb1a3ed6be93d405b43ff159f681a8d18c0e2bc2e402
+FROM node:22-alpine@sha256:0a7108bf6c7bf5de370ffb1a3ed6be93d405b43ff159f681a8d18c0e2bc2e402 AS builder
 
 WORKDIR /app
-
-ENV NODE_ENV=production
+ENV NODE_ENV=development
 
 RUN apk add --no-cache curl
 
 COPY node-sonos-http-api/ /app/
 COPY node-sonos-discovery/ /app/sonos-discovery/
+
+RUN npm install --ignore-scripts --no-audit --no-fund \
+    && npm run build \
+    && rm -rf /tmp/* /root/.npm
+
+# --- Runtime image ---
+FROM node:22-alpine@sha256:0a7108bf6c7bf5de370ffb1a3ed6be93d405b43ff159f681a8d18c0e2bc2e402
+
+LABEL org.opencontainers.image.title="sonos-http-api (fork)"
+LABEL org.opencontainers.image.description="Fork of node-sonos-http-api by Jimmy Shimizu"
+LABEL org.opencontainers.image.source="https://github.com/Trudge/node-sonos-http-api"
+LABEL org.opencontainers.image.licenses="MIT"
+
+WORKDIR /app
+ENV NODE_ENV=production APP_ROOT=/app
+
+RUN apk add --no-cache curl
+
+COPY --from=builder /app/dist/ /app/
+COPY --from=builder /app/package.json /app/package-lock.json /app/
+COPY --from=builder /app/sonos-discovery/ /app/sonos-discovery/
+COPY --from=builder /app/static/ /app/static/
+COPY --from=builder /app/presets/ /app/presets/
+COPY --from=builder /app/LICENSE.md /app/ATTRIBUTION.md /app/
 
 RUN npm install --omit=dev --ignore-scripts --no-audit --no-fund \
     && rm -rf /tmp/* /root/.npm \
@@ -26,7 +49,7 @@ EXPOSE 5005
 
 USER node
 
-HEALTHCHECK --interval=1m --timeout=2s --start-period=15s \
+HEALTHCHECK --interval=1m --timeout=2s --start-period=30s \
   CMD curl -LSfs http://localhost:5005/zones || exit 1
 
 CMD ["node", "server.js"]

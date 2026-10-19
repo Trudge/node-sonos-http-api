@@ -18,7 +18,7 @@ function makeSystem() {
   const coordinator = {
     uuid: 'uuid-1',
     roomName: 'Office',
-    baseUrl: 'http://192.168.1.20:1400',
+    baseUrl: 'http://127.0.0.1:1',
     hasSub: false,
     airPlayEnabled: true,
     micEnabled: false,
