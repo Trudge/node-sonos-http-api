@@ -8,8 +8,8 @@
     "build": "tsc",
     "typecheck": "tsc --noEmit",
     "lint": "eslint lib",
-    "test": "tsx --test test/*.test.js test/*.test.ts",
-    "coverage": "c8 --all --include='src/report/**/*.ts' --include='lib/helpers/safe-path.js' --include='lib/actions/report.js' --exclude='**/*.d.ts' --check-coverage --lines 80 --functions 90 --branches 60 --reporter=text --reporter=lcov npm test"
+    "test": "tsx --test --test-force-exit test/*.test.js test/*.test.ts",
+    "coverage": "c8 --all --include='src/report/**/*.ts' --include='src/fs/**/*.ts' --include='src/settings.ts' --include='src/http/**/*.ts' --include='lib/actions/*.ts' --include='lib/actions/report.js' --include='lib/helpers/safe-path.js' --exclude='**/*.d.ts' --check-coverage --lines 80 --functions 90 --branches 60 --reporter=text --reporter=lcov npm test"
   },
   "author": "Jimmy Shimizu <jimmy@shimizu.se>",
   "repository": {

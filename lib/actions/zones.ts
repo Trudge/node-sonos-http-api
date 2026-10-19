@@ -1,6 +1,4 @@
-'use strict';
-
-function simplifyPlayer(player) {
+function simplifyPlayer(player: any): any {
   return {
     uuid: player.uuid,
     state: player.state,
@@ -17,20 +15,18 @@ function simplifyPlayer(player) {
   };
 }
 
-function simplifyZones(zones) {
-  return zones.map((zone) => {
-    return {
-      uuid: zone.uuid,
-      coordinator: simplifyPlayer(zone.coordinator),
-      members: zone.members.map(simplifyPlayer)
-    };
-  });
-};
+function simplifyZones(zones: any[]): any[] {
+  return zones.map((zone) => ({
+    uuid: zone.uuid,
+    coordinator: simplifyPlayer(zone.coordinator),
+    members: zone.members.map(simplifyPlayer)
+  }));
+}
 
-function zones(player) {
+function zones(player: any): Promise<any[]> {
   return Promise.resolve(simplifyZones(player.system.zones));
 }
 
-module.exports = function (api) {
+export = function (api: any): void {
   api.registerAction('zones', zones);
-}
+};
