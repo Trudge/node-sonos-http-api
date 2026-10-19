@@ -1,4 +1,3 @@
-// @ts-nocheck
 'use strict';
 const crypto = require('crypto');
 const fs = require('fs');
@@ -103,7 +102,7 @@ function microsoft(phrase, voiceName) {
       body: ssml
     })
       .then(res => {
-        return new Promise((resolve) => {
+        return new Promise<void>((resolve) => {
 
           const file = fs.createWriteStream(filepath);
           res.pipe(file);

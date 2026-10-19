@@ -1,4 +1,3 @@
-// @ts-nocheck
 'use strict';
 const crypto = require('crypto');
 const fs = require('fs');

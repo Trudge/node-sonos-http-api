@@ -1,4 +1,3 @@
-// @ts-nocheck
 const fs = require('fs');
 const JSON5 = require('json5');
 const logger = require('sonos-discovery/lib/helpers/logger');
@@ -8,7 +7,7 @@ function tryLoadJson(path) {
     const fileContent = fs.readFileSync(path);
     const parsedContent = JSON5.parse(fileContent);
     return parsedContent;
-  } catch (e) {
+  } catch (e: any) {
     if (e.code === 'ENOENT') {
       logger.info(`Could not find file ${path}`);
     } else {

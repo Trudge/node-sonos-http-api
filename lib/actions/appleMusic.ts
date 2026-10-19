@@ -1,4 +1,3 @@
-// @ts-nocheck
 'use strict';
 
 function getMetadata(id, parentUri, type, title) {

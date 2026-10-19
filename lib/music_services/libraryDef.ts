@@ -1,4 +1,3 @@
-// @ts-nocheck
 'use strict';
 const Fuse = require('fuse.js');
 const fs = require('fs');

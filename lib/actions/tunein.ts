@@ -1,4 +1,3 @@
-// @ts-nocheck
 'use strict';
 
 function getTuneInMetadata(uri, serviceType) {

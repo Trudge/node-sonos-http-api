@@ -14,7 +14,9 @@
     "forceConsistentCasingInFileNames": true,
     "types": [
       "node"
-    ]
+    ],
+    "noImplicitAny": false,
+    "strictNullChecks": false
   },
   "include": [
     "lib/**/*.ts",

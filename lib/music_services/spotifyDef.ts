@@ -1,4 +1,3 @@
-// @ts-nocheck
 'use strict';
 
 const settings = require('../../src/settings');
@@ -96,7 +95,7 @@ function getTokenHeaders() {
 }
 
 function authenticateService() {
-  return new Promise((resolve, reject) => {
+  return new Promise<void>((resolve, reject) => {
     auth().then((response) => {
       const accessToken = response.accessToken;
       clientToken = accessToken;
@@ -136,7 +135,7 @@ function setService(player, p_accountId, p_accountSN, p_country)
   sid = player.system.getServiceId('Spotify');
   serviceType = player.system.getServiceType('Spotify');
   accountId = p_accountId;
-  accountSN = 14; // GACALD: Hack to fix Spotify p_accountSN;
+  accountSN = '14'; // GACALD: Hack to fix Spotify p_accountSN;
   country = p_country;
 }
 

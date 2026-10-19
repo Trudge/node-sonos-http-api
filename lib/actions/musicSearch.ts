@@ -1,4 +1,3 @@
-// @ts-nocheck
 'use strict';
 const fs = require("fs");
 const isRadioOrLineIn = require('../helpers/is-radio-or-line-in');
@@ -55,8 +54,6 @@ function getAccountId(player, service)
         
         return Promise.resolve();
       });
-  
-    return promise;
   } else {
     return Promise.resolve();
   }

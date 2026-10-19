@@ -1,7 +1,7 @@
-// @ts-nocheck
 'use strict';
 const deezerDef = {
   country:   '',
+  song:      '',
   search:    {
                album:   'https://api.deezer.com/search?limit=1&q=album:',
                song:    'https://api.deezer.com/search?limit=50&q=',

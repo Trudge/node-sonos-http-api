@@ -1,4 +1,3 @@
-// @ts-nocheck
 'use strict';
 const path = require('path');
 const requireDir = require('sonos-discovery/lib/helpers/require-dir');

@@ -1,4 +1,3 @@
-// @ts-nocheck
 'use strict';
 const fs = require('fs');
 const util = require('util');
@@ -15,7 +14,7 @@ function readPresetsFromDir(presets, presetPath) {
   let files;
   try {
     files = fs.readdirSync(presetPath);
-  } catch (e) {
+  } catch (e: any) {
     logger.warn(`Could not find dir ${presetPath}, are you sure it exists?`);
     logger.warn(e.message);
     return;
@@ -81,7 +80,7 @@ try {
     clearTimeout(watchTimeout);
     watchTimeout = setTimeout(initPresets, 200);
   });
-} catch (e) {
+} catch (e: any) {
   logger.warn(`Could not start watching dir ${PRESETS_PATH}, will not auto reload any presets. Make sure the dir exists`);
   logger.warn(e.message);
 }

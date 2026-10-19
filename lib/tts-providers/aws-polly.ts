@@ -1,4 +1,3 @@
-// @ts-nocheck
 'use strict';
 const crypto = require('crypto');
 const fs = require('fs');
@@ -24,7 +23,7 @@ function polly(phrase, voiceName) {
 
   // Construct a filesystem neutral filename
   const dynamicParameters = { Text: phrase };
-  const synthesizeParameters = Object.assign({}, DEFAULT_SETTINGS, dynamicParameters);
+  const synthesizeParameters: any = Object.assign({}, DEFAULT_SETTINGS, dynamicParameters);
   if (settings.aws.name) {
     synthesizeParameters.VoiceId = settings.aws.name;
   }

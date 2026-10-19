@@ -1,4 +1,3 @@
-// @ts-nocheck
 'use strict';
 const logger = require('sonos-discovery/lib/helpers/logger');
 const isRadioOrLineIn = require('../helpers/is-radio-or-line-in');
@@ -7,7 +6,7 @@ function saveAll(system) {
   const backupPresets = system.zones.map((zone) => {
     const coordinator = zone.coordinator;
     const state = coordinator.state;
-    const preset = {
+    const preset: any = {
       players: [
         { roomName: coordinator.roomName, volume: state.volume }
       ],
@@ -59,7 +58,7 @@ function announcePreset(system, uri, preset, duration) {
     group.coordinator.roomName === preset.players[0].roomName);
   }
 
-  const oneGroupPromise = new Promise((resolve) => {
+  const oneGroupPromise = new Promise<void>((resolve) => {
     const onTopologyChanged = (topology) => {
       if (hasReachedCorrectTopology(topology)) {
         return resolve();
@@ -82,7 +81,7 @@ function announcePreset(system, uri, preset, duration) {
     })
     .then(() => {
       coordinator.play();
-      return new Promise((resolve) => {
+      return new Promise<void>((resolve) => {
         const transportChange = (state) => {
           logger.debug(`Player changed to state ${state.playbackState}`);
           if (state.playbackState === 'STOPPED') {

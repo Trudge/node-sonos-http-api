@@ -1,4 +1,3 @@
-// @ts-nocheck
 'use strict';
 const logger = require('sonos-discovery/lib/helpers/logger');
 const isRadioOrLineIn = require('../helpers/is-radio-or-line-in');
@@ -11,7 +10,7 @@ function singlePlayerAnnouncement(player, uri, volume, duration) {
 
   let groupToRejoin;
 
-  const backupPreset = {
+  const backupPreset: any = {
     players: [
       { roomName: player.roomName, volume: state.volume }
     ]
@@ -101,7 +100,7 @@ function singlePlayerAnnouncement(player, uri, volume, duration) {
   const restoreTimeout = duration + 2000;
   return system.applyPreset(ttsPreset)
     .then(() => {
-      return new Promise((resolve) => {
+      return new Promise<void>((resolve) => {
         const transportChange = (state) => {
           logger.debug(`Player changed to state ${state.playbackState}`);
           if (state.playbackState === 'STOPPED') {
