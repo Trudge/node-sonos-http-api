@@ -17,7 +17,7 @@ RUN apk add --no-cache curl
 COPY node-sonos-http-api/ /app/
 COPY node-sonos-discovery/ /app/sonos-discovery/
 
-RUN npm ci --omit=dev --ignore-scripts \
+RUN npm install --omit=dev --ignore-scripts --no-audit --no-fund \
     && rm -rf /tmp/* /root/.npm \
     && mkdir -p cache \
     && chown -R node:node /app
