@@ -1,20 +1,19 @@
 import type { ActionApi, PlayerLike } from '../../src/types/actions';
-
-const tryDownloadTTS = require('../helpers/try-download-tts');
-const allPlayerAnnouncement = require('../helpers/all-player-announcement');
-const settings = require('../../src/settings');
+import tryDownloadTTS = require('../helpers/try-download-tts');
+import allPlayerAnnouncement = require('../helpers/all-player-announcement');
+import settings = require('../../src/settings');
 
 let port: number;
 
-function sayAll(player: PlayerLike, values: string[]): Promise<unknown> {
+async function sayAll(player: PlayerLike, values: string[]): Promise<unknown> {
   let text: string;
   try {
     text = decodeURIComponent(values[0]);
-  } catch (err: any) {
-    if (err instanceof URIError) {
-      err.message = `The encoded phrase ${values[0]} could not be URI decoded. Make sure your url encoded values (%xx) are within valid ranges. xx should be hexadecimal representations`;
+  } catch (error) {
+    if (error instanceof URIError) {
+      error.message = `The encoded phrase ${values[0]} could not be URI decoded. Make sure your url encoded values (%xx) are within valid ranges. xx should be hexadecimal representations`;
     }
-    return Promise.reject(err);
+    throw error;
   }
 
   let announceVolume: string | number;
@@ -26,13 +25,16 @@ function sayAll(player: PlayerLike, values: string[]): Promise<unknown> {
     announceVolume = values[2] || settings.announceVolume || 40;
   }
 
-  return tryDownloadTTS(text, language).then((result: any) =>
-    allPlayerAnnouncement(
-      player.system,
-      `http://${player.system.localEndpoint}:${port}${result.uri}`,
-      announceVolume,
-      result.duration
-    )
+  const result = await tryDownloadTTS(text, language);
+  if (!result) {
+    throw new Error('No TTS provider produced audio for this phrase');
+  }
+
+  return allPlayerAnnouncement(
+    player.system,
+    `http://${player.system.localEndpoint}:${port}${result.uri}`,
+    announceVolume,
+    result.duration
   );
 }
 

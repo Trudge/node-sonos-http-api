@@ -1,26 +1,34 @@
-'use strict';
-const path = require('path');
-const requireDir = require('sonos-discovery/lib/helpers/require-dir');
-const providers: any[] = [];
+import path = require('node:path');
+import requireDir = require('sonos-discovery/lib/helpers/require-dir');
+import google = require('../tts-providers/default/google');
 
-requireDir(path.join(__dirname, '../tts-providers'), (provider: any) => {
+interface TtsResult {
+  duration: number;
+  uri: string;
+}
+
+type TtsProvider = (
+  phrase: string,
+  language?: string
+) => Promise<TtsResult | undefined>;
+
+const providers: TtsProvider[] = [];
+
+requireDir(path.join(__dirname, '../tts-providers'), (provider: TtsProvider) => {
   providers.push(provider);
 });
 
-providers.push(require('../tts-providers/default/google'));
+providers.push(google);
 
-function tryDownloadTTS(phrase:  any, language:  any) {
-  let result: any;
-  return providers.reduce((promise: any, provider: any) => {
-    return promise.then(() => {
-      if (result) return result;
-      return provider(phrase, language)
-        .then((_result: any) => {
-          result = _result;
-          return result;
-        });
-      });
-  }, Promise.resolve());
+async function tryDownloadTTS(
+  phrase: string,
+  language?: string
+): Promise<TtsResult | undefined> {
+  for (const provider of providers) {
+    const result = await provider(phrase, language);
+    if (result) return result;
+  }
+  return undefined;
 }
 
-module.exports = tryDownloadTTS;
+export = tryDownloadTTS;

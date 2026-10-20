@@ -1,74 +1,51 @@
-'use strict';
-const crypto = require('crypto');
-const fs = require('fs');
-const http = require('http');
-const path = require('path');
-const fileDuration = require('../../helpers/file-duration');
-const settings = require('../../../src/settings');
-const logger = require('sonos-discovery/lib/helpers/logger');
-const { safeComponent } = require('../../../src/fs/safe-path');
+import crypto = require('node:crypto');
+import fs = require('node:fs');
+import path = require('node:path');
+import fileDuration = require('../../helpers/file-duration');
+import settings = require('../../../src/settings');
+import logger = require('sonos-discovery/lib/helpers/logger');
+import { safeComponent } from '../../../src/fs/safe-path';
 
-function google(phrase:  any, language:  any) {
-  if (!language) {
-    language = 'en';
-  }
+interface TtsResult {
+  duration: number;
+  uri: string;
+}
 
-  // Use Google tts translation service to create a mp3 file
-  const ttsRequestUrl = 'http://translate.google.com/translate_tts?client=tw-ob&tl=' + language + '&q=' + encodeURIComponent(phrase);
+async function google(phrase: string, language?: string): Promise<TtsResult> {
+  const selectedLanguage = language || 'en';
+  const ttsRequestUrl = `https://translate.google.com/translate_tts?client=tw-ob&tl=${encodeURIComponent(selectedLanguage)}&q=${encodeURIComponent(phrase)}`;
 
-  // Construct a filesystem neutral filename
   const phraseHash = crypto.createHash('sha1').update(phrase).digest('hex');
-  const filename = `google-${phraseHash}-${safeComponent(language, 'en')}.mp3`;
+  const filename = `google-${phraseHash}-${safeComponent(selectedLanguage, 'en')}.mp3`;
   const filepath = path.resolve(settings.webroot, 'tts', filename);
-
   const expectedUri = `/tts/${filename}`;
+
   try {
-    fs.accessSync(filepath, fs.R_OK);
-    return fileDuration(filepath)
-      .then((duration: any) => {
-        return {
-          duration,
-          uri: expectedUri
-        };
-      });
-  } catch (err) {
+    fs.accessSync(filepath, fs.constants.R_OK);
+    const duration = await fileDuration(filepath);
+    return { duration, uri: expectedUri };
+  } catch (_error) {
     logger.info(`announce file for phrase "${phrase}" does not seem to exist, downloading`);
   }
 
-  return new Promise((resolve: any, reject: any) => {
-    const file = fs.createWriteStream(filepath);
-    const options = {
-      "headers": { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/47.0.2526.106 Safari/537.36" },
-      "host": "translate.google.com",
-      "path": "/translate_tts?client=tw-ob&tl=" + language + "&q=" + encodeURIComponent(phrase)
-    }
-    const req = http.request(options, function (response: any) {
-      if (response.statusCode < 300 && response.statusCode >= 200) {
-        response.pipe(file);
-        file.on('finish', function () {
-          file.end();
-          resolve(expectedUri);
-        });
-      } else {
-        reject(new Error(`Download from google TTS failed with status ${response.statusCode}, ${response.message}`));
+  const response = await fetch(ttsRequestUrl, {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/47.0.2526.106 Safari/537.36'
+    },
+    signal: AbortSignal.timeout(10000)
+  });
 
-      }
-    });
+  if (!response.ok) {
+    throw new Error(`Download from google TTS failed with status ${response.status}`);
+  }
 
-    req.setTimeout(10000, () => req.destroy(new Error('Google TTS request timed out')));
-    req.on('error', function (err: any) {
-      reject(err);
-    }).end();
-  })
-    .then(() => {
-      return fileDuration(filepath);
-    })
-    .then((duration: any) => {
-      return {
-        duration,
-        uri: expectedUri
-      };
-    });
+  const audio = Buffer.from(await response.arrayBuffer());
+  if (audio.length === 0) {
+    throw new Error('Google TTS returned an empty audio response');
+  }
+  await fs.promises.writeFile(filepath, audio);
+  const duration = await fileDuration(filepath);
+  return { duration, uri: expectedUri };
 }
 
-module.exports = google;
+export = google;

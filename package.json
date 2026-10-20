@@ -7,7 +7,7 @@
     "dev": "tsx src/server.ts",
     "build": "rm -rf dist && tsc && cp package.json dist/package.json && cp lib/sirius-channels.json dist/lib/sirius-channels.json",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint lib",
+    "lint": "biome lint lib src test",
     "test": "tsx --test --test-force-exit test/*.test.ts",
     "coverage": "c8 --all --include='src/report/**/*.ts' --include='src/fs/**/*.ts' --include='src/settings.ts' --include='src/http/**/*.ts' --include='lib/actions/*.ts' --exclude='**/*.d.ts' --exclude='lib/actions/aldilifeMusic.ts' --exclude='lib/actions/amazonMusic.ts' --exclude='lib/actions/appleMusic.ts' --exclude='lib/actions/bbcSounds.ts' --exclude='lib/actions/musicSearch.ts' --exclude='lib/actions/napster.ts' --exclude='lib/actions/siriusXM.ts' --exclude='lib/actions/spotify.ts' --exclude='lib/actions/tunein.ts' --check-coverage --lines 80 --functions 90 --branches 60 --reporter=text --reporter=lcov npm test",
     "pretest": "npm run build"
@@ -35,11 +35,9 @@
   "main": "dist/src/server.js",
   "license": "MIT",
   "devDependencies": {
+    "@biomejs/biome": "^2.5.15",
     "@types/node": "^26.6.5",
     "c8": "^12.0.0",
-    "eslint": "^4.8.0",
-    "eslint-config-airbnb-base": "^12.0.1",
-    "eslint-plugin-import": "^2.7.0",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2"
   },

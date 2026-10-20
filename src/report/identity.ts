@@ -1,9 +1,12 @@
 import request = require('sonos-discovery/lib/helpers/request');
 import { XmlEntities } from 'html-entities';
+import type { PlayerLike } from '../types/actions';
 
 const xmlEntities = new XmlEntities();
 const CACHE_TTL_MS = 60000;
+const FAILURE_TTL_MS = 15000;
 const cache = new Map<string, { expires: number; value: DeviceIdentity }>();
+const inFlight = new Map<string, Promise<DeviceIdentity>>();
 
 export interface DeviceIdentity {
   available: boolean;
@@ -33,58 +36,80 @@ function firstTag(xml: string, name: string): string | null {
 function serviceTypes(xml: string): string[] {
   const types: string[] = [];
   const re = /<serviceType>([^<]+)<\/serviceType>/gi;
-  let match: RegExpExecArray | null;
-  while ((match = re.exec(xml)) !== null) {
+  let match = re.exec(xml);
+  while (match !== null) {
     types.push(decode(match[1]) as string);
+    match = re.exec(xml);
   }
   return types;
 }
 
 export function parseIdentityXml(xml: string): DeviceIdentity {
   return {
-      available: true,
-      udn: firstTag(xml, 'UDN'),
-      modelName: firstTag(xml, 'modelName'),
-      modelNumber: firstTag(xml, 'modelNumber'),
-      displayName: firstTag(xml, 'displayName'),
-      roomName: firstTag(xml, 'roomName'),
-      serialNumber: firstTag(xml, 'serialNum'),
-      softwareVersion: firstTag(xml, 'softwareVersion'),
-      hardwareVersion: firstTag(xml, 'hardwareVersion'),
-      macAddress: firstTag(xml, 'MACAddress'),
-      zoneType: firstTag(xml, 'zoneType'),
-      services: serviceTypes(xml)
+    available: true,
+    udn: firstTag(xml, 'UDN'),
+    modelName: firstTag(xml, 'modelName'),
+    modelNumber: firstTag(xml, 'modelNumber'),
+    displayName: firstTag(xml, 'displayName'),
+    roomName: firstTag(xml, 'roomName'),
+    serialNumber: firstTag(xml, 'serialNum'),
+    softwareVersion: firstTag(xml, 'softwareVersion'),
+    hardwareVersion: firstTag(xml, 'hardwareVersion'),
+    macAddress: firstTag(xml, 'MACAddress'),
+    zoneType: firstTag(xml, 'zoneType'),
+    services: serviceTypes(xml)
   };
 }
 
-export async function getIdentity(player: any): Promise<DeviceIdentity> {
-  const cached = cache.get(player.uuid);
-  const now = Date.now();
-  if (cached && cached.expires > now) return cached.value;
+function unavailable(error: unknown): DeviceIdentity {
+  return {
+    available: false,
+    udn: null,
+    modelName: null,
+    modelNumber: null,
+    displayName: null,
+    roomName: null,
+    serialNumber: null,
+    softwareVersion: null,
+    hardwareVersion: null,
+    macAddress: null,
+    zoneType: null,
+    services: [],
+    error: error instanceof Error ? error.message : String(error)
+  };
+}
 
-  try {
-    const xml = await request({
-      uri: `${player.baseUrl}/xml/device_description.xml`,
-      timeout: 4000
-    });
-    const value = parseIdentityXml(xml);
-    cache.set(player.uuid, { expires: now + CACHE_TTL_MS, value });
-    return value;
-  } catch (err) {
-    return {
-      available: false,
-      udn: null,
-      modelName: null,
-      modelNumber: null,
-      displayName: null,
-      roomName: null,
-      serialNumber: null,
-      softwareVersion: null,
-      hardwareVersion: null,
-      macAddress: null,
-      zoneType: null,
-      services: [],
-      error: (err as Error).message
-    };
+export function getIdentity(player: PlayerLike): Promise<DeviceIdentity> {
+  const key = player.uuid || player.baseUrl;
+  const cached = cache.get(key);
+  const now = Date.now();
+  if (cached && cached.expires > now) {
+    return Promise.resolve(cached.value);
   }
+
+  const pending = inFlight.get(key);
+  if (pending) {
+    return pending;
+  }
+
+  const identityPromise = request({
+    uri: `${player.baseUrl}/xml/device_description.xml`,
+    timeout: 4000
+  })
+    .then((xml: unknown) => {
+      const value = parseIdentityXml(String(xml));
+      cache.set(key, { expires: Date.now() + CACHE_TTL_MS, value });
+      return value;
+    })
+    .catch((error: unknown) => {
+      const value = unavailable(error);
+      cache.set(key, { expires: Date.now() + FAILURE_TTL_MS, value });
+      return value;
+    })
+    .finally(() => {
+      inFlight.delete(key);
+    });
+
+  inFlight.set(key, identityPromise);
+  return identityPromise;
 }

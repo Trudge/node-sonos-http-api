@@ -1,6 +1,6 @@
 import type { ActionApi, PlayerLike, SonosSystemLike } from '../../src/types/actions';
+import logger = require('sonos-discovery/lib/helpers/logger');
 
-const logger = require('sonos-discovery/lib/helpers/logger');
 const lockVolumes: Record<string, number> = {};
 
 function lockvolumes(player: PlayerLike): Promise<unknown> {
@@ -20,11 +20,12 @@ function unlockvolumes(player: PlayerLike): Promise<unknown> {
   return Promise.resolve();
 }
 
-function restrictVolume(this: SonosSystemLike, info: any): Promise<unknown> | undefined {
-  logger.debug(`should revert volume to ${lockVolumes[info.uuid]}`);
+function restrictVolume(this: SonosSystemLike, info: { uuid: string }): Promise<unknown> | undefined {
+  const expectedVolume = lockVolumes[info.uuid];
+  logger.debug(`should revert volume to ${expectedVolume}`);
   const player = this.getPlayerByUUID(info.uuid);
-  if (player.state.volume !== lockVolumes[info.uuid]) {
-    return player.setVolume(lockVolumes[info.uuid]);
+  if (expectedVolume !== undefined && player.state.volume !== expectedVolume) {
+    return player.setVolume(expectedVolume);
   }
   return undefined;
 }

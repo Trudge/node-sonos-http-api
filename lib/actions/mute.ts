@@ -17,7 +17,7 @@ function groupUnmute(player: PlayerLike): Promise<unknown> {
 }
 
 function toggleMute(player: PlayerLike): Promise<unknown> {
-  const ret: any = { status: 'success', muted: true };
+  const ret: { status: string; muted: boolean } = { status: 'success', muted: true };
   if (player.state.mute) {
     ret.muted = false;
     return player.unMute().then(() => ret);

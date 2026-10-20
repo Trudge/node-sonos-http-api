@@ -1,6 +1,5 @@
 import type { ActionApi, PlayerLike } from '../../src/types/actions';
-
-const logger = require('sonos-discovery/lib/helpers/logger');
+import logger = require('sonos-discovery/lib/helpers/logger');
 
 function addToGroup(player: PlayerLike, values: string[]): Promise<unknown> {
   const joiningRoomName = decodeURIComponent(values[0]);

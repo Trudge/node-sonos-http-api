@@ -5,7 +5,7 @@ function timeSeek(player: PlayerLike, values: string[]): Promise<unknown> {
 }
 
 function trackSeek(player: PlayerLike, values: string[]): Promise<unknown> {
-  return player.coordinator.trackSeek(values[0] as any * 1);
+  return player.coordinator.trackSeek(Number(values[0]));
 }
 
 export = function (api: ActionApi): void {

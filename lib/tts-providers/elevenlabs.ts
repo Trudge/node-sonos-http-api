@@ -1,99 +1,94 @@
-'use strict';
-const crypto = require('crypto');
-const fs = require('fs');
-const http = require('http');
-const path = require('path');
-const fileDuration = require('../helpers/file-duration');
-const settings = require('../../src/settings');
-const logger = require('sonos-discovery/lib/helpers/logger');
-const { safeComponent } = require('../../src/fs/safe-path');
+import crypto = require('node:crypto');
+import fs = require('node:fs');
+import path = require('node:path');
+import fileDuration = require('../helpers/file-duration');
+import settings = require('../../src/settings');
+import logger = require('sonos-discovery/lib/helpers/logger');
+import { safeComponent } from '../../src/fs/safe-path';
+
+interface TtsResult {
+  duration: number;
+  uri: string;
+}
 
 const DEFAULT_SETTINGS = {
   stability: 0.5,
   similarityBoost: 0.5,
   speakerBoost: true,
   style: 1,
-  modelId: "eleven_multilingual_v2"
+  modelId: 'eleven_multilingual_v2'
 };
 
-// Provider developed based on structure from aws-polly.js.
-// In this tts provider language argument from uri is used to inject custom voiceId
-function eleven(phrase:  any, voiceId:  any) {
+async function eleven(phrase: string, voiceId?: string): Promise<TtsResult | undefined> {
   if (!settings.elevenlabs) {
-    return Promise.resolve();
+    return undefined;
   }
 
-  // Construct a filesystem neutral filename
-  const dynamicParameters = { textInput: phrase };
-  const synthesizeParameters = Object.assign({}, DEFAULT_SETTINGS, dynamicParameters, settings.elevenlabs.config);
+  const synthesizeParameters = Object.assign(
+    {},
+    DEFAULT_SETTINGS,
+    settings.elevenlabs.config,
+    { textInput: phrase }
+  );
 
   if (voiceId) {
     synthesizeParameters.voiceId = voiceId;
   }
 
   if (!synthesizeParameters.voiceId) {
-    console.log('Voice ID not found neither in settings.elevenlabs.config nor in request!')
-    return Promise.resolve();
+    throw new Error('Voice ID not found neither in settings.elevenlabs.config nor in request');
+  }
+
+  const apiKey = settings.elevenlabs.auth?.apiKey;
+  if (!apiKey) {
+    throw new Error('Missing settings.elevenlabs.auth.apiKey');
   }
 
   const phraseHash = crypto.createHash('sha1').update(phrase).digest('hex');
   const filename = `elevenlabs-${phraseHash}-${safeComponent(synthesizeParameters.voiceId)}.mp3`;
   const filepath = path.resolve(settings.webroot, 'tts', filename);
-
-  synthesizeParameters.fileName = filepath;
-
   const expectedUri = `/tts/${filename}`;
+
   try {
-    fs.accessSync(filepath, fs.R_OK);
-    return fileDuration(filepath)
-      .then((duration: any) => {
-        return {
-          duration,
-          uri: expectedUri
-        };
-      });
-  } catch (err) {
+    fs.accessSync(filepath, fs.constants.R_OK);
+    const duration = await fileDuration(filepath);
+    return { duration, uri: expectedUri };
+  } catch (_error) {
     logger.info(`announce file for phrase "${phrase}" does not seem to exist, downloading`);
   }
 
   const url = `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(synthesizeParameters.voiceId)}`;
-  const body = JSON.stringify({
-    text: phrase,
-    model_id: synthesizeParameters.modelId,
-    voice_settings: {
-      stability: synthesizeParameters.stability,
-      similarity_boost: synthesizeParameters.similarityBoost,
-      style: synthesizeParameters.style,
-      use_speaker_boost: synthesizeParameters.speakerBoost
-    }
-  });
-
-  return fetch(url, {
+  const response = await fetch(url, {
     method: 'POST',
     headers: {
-      'xi-api-key': settings.elevenlabs.auth.apiKey,
+      'xi-api-key': apiKey,
       'Content-Type': 'application/json',
       Accept: 'audio/mpeg'
     },
-    body,
-    signal: AbortSignal.timeout(15000)
-  })
-    .then((response: any) => {
-      if (!response.ok) {
-        throw new Error(`ElevenLabs TTS failed with status ${response.status}`);
+    body: JSON.stringify({
+      text: phrase,
+      model_id: synthesizeParameters.modelId,
+      voice_settings: {
+        stability: synthesizeParameters.stability,
+        similarity_boost: synthesizeParameters.similarityBoost,
+        style: synthesizeParameters.style,
+        use_speaker_boost: synthesizeParameters.speakerBoost
       }
-      return response.arrayBuffer();
-    })
-    .then((audio: any) => {
-      fs.writeFileSync(filepath, Buffer.from(audio));
-      return fileDuration(filepath);
-    })
-    .then((duration: any) => {
-      return {
-        duration,
-        uri: expectedUri
-      };
-    });
+    }),
+    signal: AbortSignal.timeout(15000)
+  });
+
+  if (!response.ok) {
+    throw new Error(`ElevenLabs TTS failed with status ${response.status}`);
+  }
+
+  const audio = Buffer.from(await response.arrayBuffer());
+  if (audio.length === 0) {
+    throw new Error('ElevenLabs returned an empty audio response');
+  }
+  await fs.promises.writeFile(filepath, audio);
+  const duration = await fileDuration(filepath);
+  return { duration, uri: expectedUri };
 }
 
-module.exports = eleven;
+export = eleven;

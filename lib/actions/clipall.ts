@@ -1,32 +1,23 @@
-import path = require('path');
+import path = require('node:path');
 import type { ActionApi, PlayerLike } from '../../src/types/actions';
-
-const settings = require('../../src/settings');
-const allPlayerAnnouncement = require('../helpers/all-player-announcement');
-const fileDuration = require('../helpers/file-duration');
-const { resolveClipPath } = require('../../src/fs/safe-path');
+import settings = require('../../src/settings');
+import allPlayerAnnouncement = require('../helpers/all-player-announcement');
+import fileDuration = require('../helpers/file-duration');
+import { resolveClipPath } from '../../src/fs/safe-path';
 
 let port: number;
 const LOCAL_PATH_LOCATION = path.join(settings.webroot, 'clips');
 
-function playClipOnAll(player: PlayerLike, values: string[]): Promise<unknown> {
-  let announceVolume = settings.announceVolume || 40;
-  if (/^\d+$/i.test(values[1])) announceVolume = values[1];
+async function playClipOnAll(player: PlayerLike, values: string[]): Promise<unknown> {
+  const announceVolume = /^\d+$/i.test(values[1]) ? values[1] : (settings.announceVolume || 40);
+  const clip = resolveClipPath(LOCAL_PATH_LOCATION, values[0]);
+  const duration = await fileDuration(clip.fullPath);
 
-  let clip;
-  try {
-    clip = resolveClipPath(LOCAL_PATH_LOCATION, values[0]);
-  } catch (err) {
-    return Promise.reject(err);
-  }
-
-  return fileDuration(clip.fullPath).then((duration: number) =>
-    allPlayerAnnouncement(
-      player.system,
-      `http://${player.system.localEndpoint}:${port}/clips/${encodeURIComponent(clip.filename)}`,
-      announceVolume,
-      duration
-    )
+  return allPlayerAnnouncement(
+    player.system,
+    `http://${player.system.localEndpoint}:${port}/clips/${encodeURIComponent(clip.filename)}`,
+    announceVolume,
+    duration
   );
 }
 

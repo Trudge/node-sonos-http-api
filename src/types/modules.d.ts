@@ -1,9 +1,9 @@
 declare module 'basic-auth' {
-  function auth(req: any): { name: string; pass: string } | undefined;
+  function auth(req: unknown): { name: string; pass: string } | undefined;
   export = auth;
 }
 
 declare module 'serve-static' {
-  function serve(root: string, options?: any): (req: any, res: any, next: (err?: any) => void) => void;
+  function serve(root: string, options?: unknown): (req: unknown, res: unknown, next: (err?: unknown) => void) => void;
   export = serve;
 }

@@ -1,22 +1,319 @@
-'use strict';
-const Fuse = require('fuse.js');
-const fs = require('fs');
-const path = require('path');
-const settings = require('../../src/settings');
+import Fuse from 'fuse.js';
+import fs = require('node:fs');
+import path = require('node:path');
+import settings = require('../../src/settings');
+import logger = require('sonos-discovery/lib/helpers/logger');
+import type { PlayerLike } from '../../src/types/actions';
+import type { MusicService, MusicTrack, TrackList, UriMetadata } from './types';
+
+interface LibraryTrack {
+  artistTrackSearch: string;
+  artistAlbumSearch: string;
+  trackName: string;
+  artistName: string;
+  albumName: string;
+  albumTrackNumber?: number;
+  uri: string;
+  metadata: string;
+}
+
+interface LibraryBrowseItem {
+  uri?: string;
+  artist?: string;
+  album?: string;
+  title?: string;
+  albumTrackNumber?: number;
+}
+
+interface LibraryQueueEntry {
+  item: {
+    trackName: string;
+    artistName: string;
+    albumName: string;
+    albumTrackNumber?: number;
+    uri: string;
+    metadata: string;
+  };
+}
+
+interface BrowseChunk {
+  items: LibraryBrowseItem[];
+  startIndex: number;
+  numberReturned: number;
+  totalMatches: number;
+}
+
+interface MusicLibrary {
+  version: number;
+  tracks: {
+    items: LibraryTrack[];
+    startIndex: number;
+    numberReturned: number;
+    totalMatches: number;
+  };
+}
+
 const libraryPath = path.join(settings.cacheDir, 'library.json');
-const logger = require('sonos-discovery/lib/helpers/logger');
+const randomQueueLimit = settings.library && settings.library.randomQueueLimit !== undefined
+  ? settings.library.randomQueueLimit
+  : 50;
+const currentLibVersion = 1.4;
 
-var randomQueueLimit = (settings.library && settings.library.randomQueueLimit !== undefined)?settings.library.randomQueueLimit:50;
+let musicLibrary: MusicLibrary | null = null;
+let fuzzyTracks: Fuse<LibraryTrack> | null = null;
+let fuzzyAlbums: Fuse<LibraryTrack> | null = null;
+let loadPromise: Promise<MusicLibrary> | null = null;
 
-let musicLibrary: any = null;
-var currentLibVersion = 1.4;
-let fuzzyTracks: any = null;
-let fuzzyAlbums: any = null;
+function getTokenHeaders(): null {
+  return null;
+}
 
-var isLoading = false;
+function authenticateService(): Promise<void> {
+  return Promise.resolve();
+}
 
+function setService(
+  _player: PlayerLike,
+  _accountId: string,
+  _accountSN: string,
+  _country: string
+): void {
+}
 
-const libraryDef: any = {
+function getSearchTerm(
+  type: string,
+  _term: string,
+  artist: string,
+  album: string,
+  track: string
+): string {
+  let newTerm = artist;
+
+  if (newTerm !== '' && (artist !== '' || track !== '')) {
+    newTerm += ' ';
+  }
+  newTerm += type === 'album' ? album : track;
+
+  return newTerm;
+}
+
+function getMetadata(type: string, id: string | number, name: string): string {
+  const token = libraryDef.token;
+  const parentUri = (libraryDef.parent[type] || '') + name;
+  const objectType = libraryDef.object[type] || '';
+
+  return `<DIDL-Lite xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:upnp="urn:schemas-upnp-org:metadata-1-0/upnp/"
+          xmlns:r="urn:schemas-rinconnetworks-com:metadata-1-0/" xmlns="urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/">
+          <item id="${id}" parentID="${parentUri}" restricted="true"><dc:title></dc:title><upnp:class>object.${objectType}</upnp:class>
+          <desc id="cdudn" nameSpace="urn:schemas-rinconnetworks-com:metadata-1-0/">${token}</desc></item></DIDL-Lite>`;
+}
+
+function getURIandMetadata(_type: string, resList: unknown): UriMetadata {
+  const items = resList as UriMetadata[];
+  return { uri: items[0]?.uri || '', metadata: items[0]?.metadata || '' };
+}
+
+function loadTracks(type: string, tracksJson: unknown): TrackList {
+  const tracks: TrackList = {
+    count: 0,
+    isArtist: false,
+    queueTracks: []
+  };
+  const entries = tracksJson as LibraryQueueEntry[];
+
+  if (entries.length > 0) {
+    const albumName = entries[0].item.albumName;
+
+    tracks.queueTracks = entries.reduce((tracksArray: MusicTrack[], track: LibraryQueueEntry) => {
+      if (tracks.count < randomQueueLimit) {
+        let skip = false;
+
+        if (type === 'song') {
+          skip = tracksArray.some((existing) => existing.trackName === track.item.trackName);
+        } else {
+          skip = track.item.albumName !== albumName;
+        }
+
+        if (!skip) {
+          tracksArray.push({
+            trackName: track.item.trackName,
+            artistName: track.item.artistName,
+            albumTrackNumber: track.item.albumTrackNumber,
+            uri: track.item.uri,
+            metadata: track.item.metadata
+          });
+          tracks.count += 1;
+        }
+      }
+      return tracksArray;
+    }, []);
+  }
+
+  if (type === 'album') {
+    tracks.queueTracks.sort((a, b) => {
+      if (a.artistName !== b.artistName) {
+        return a.artistName > b.artistName ? 1 : -1;
+      }
+      return (a.albumTrackNumber || 0) - (b.albumTrackNumber || 0);
+    });
+  }
+
+  return tracks;
+}
+
+function libIsEmpty(): boolean {
+  return musicLibrary === null;
+}
+
+async function loadFuse<T>(items: T[], fuzzyKeys: string[]): Promise<Fuse<T>> {
+  return new Fuse(items, {
+    keys: fuzzyKeys,
+    threshold: 0.2,
+    ignoreLocation: true
+  });
+}
+
+function isFinished(chunk: BrowseChunk): boolean {
+  return chunk.startIndex + chunk.numberReturned >= chunk.totalMatches;
+}
+
+async function loadLibraryFromPlayer(player: PlayerLike): Promise<MusicLibrary> {
+  logger.info('Loading Library');
+  const library: MusicLibrary = {
+    version: currentLibVersion,
+    tracks: {
+      items: [],
+      startIndex: 0,
+      numberReturned: 0,
+      totalMatches: 1
+    }
+  };
+
+  const result = library.tracks;
+  let chunk = await player.browse('A:TRACKS', 0, 0) as BrowseChunk;
+
+  for (;;) {
+    chunk.items.forEach((item: LibraryBrowseItem) => {
+      if (item.uri !== undefined && item.artist !== undefined && item.album !== undefined) {
+        const metadataId = (libraryDef.metastart.song || '') + item.uri.substring(item.uri.indexOf(':') + 1);
+        const metadata = getMetadata(
+          'song',
+          metadataId,
+          `${encodeURIComponent(item.artist)}/${encodeURIComponent(item.album)}`
+        );
+        result.items.push({
+          artistTrackSearch: `${item.artist} ${item.title}`,
+          artistAlbumSearch: `${item.artist} ${item.album}`,
+          trackName: item.title || '',
+          artistName: item.artist,
+          albumName: item.album,
+          albumTrackNumber: item.albumTrackNumber,
+          uri: item.uri,
+          metadata
+        });
+      }
+    });
+
+    result.numberReturned += chunk.numberReturned;
+    result.totalMatches = chunk.totalMatches;
+    logger.info(`Tracks returned: ${result.numberReturned}, Total matches: ${result.totalMatches}`);
+
+    if (isFinished(chunk)) {
+      break;
+    }
+
+    chunk = await player.browse('A:TRACKS', chunk.startIndex + chunk.numberReturned, 0) as BrowseChunk;
+  }
+
+  await fs.promises.writeFile(libraryPath, JSON.stringify(library));
+  return library;
+}
+
+function loadLibrary(player: PlayerLike | null): Promise<MusicLibrary> {
+  if (!player) {
+    return Promise.reject(new Error('No player available to load the music library'));
+  }
+  if (loadPromise) {
+    return loadPromise;
+  }
+
+  loadPromise = loadLibraryFromPlayer(player)
+    .catch((error: unknown) => {
+      logger.error('Error when recursively trying to load library using browse()', error);
+      throw error;
+    })
+    .finally(() => {
+      loadPromise = null;
+    });
+
+  return loadPromise;
+}
+
+async function buildSearchIndexes(): Promise<void> {
+  if (!musicLibrary) {
+    return;
+  }
+  fuzzyTracks = await loadFuse(musicLibrary.tracks.items, ['artistTrackSearch', 'artistName', 'trackName']);
+  fuzzyAlbums = await loadFuse(musicLibrary.tracks.items, ['artistAlbumSearch', 'albumName', 'artistName']);
+}
+
+async function loadLibrarySearch(player: PlayerLike | null, load: boolean): Promise<string> {
+  if (load || musicLibrary === null) {
+    musicLibrary = await loadLibrary(player);
+    await buildSearchIndexes();
+    return 'Library and search loaded';
+  }
+
+  await buildSearchIndexes();
+  return 'Library search loaded';
+}
+
+function shuffle<T>(items: T[]): T[] {
+  const shuffled = items.slice();
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const randomIndex = Math.floor(Math.random() * (index + 1));
+    [shuffled[index], shuffled[randomIndex]] = [shuffled[randomIndex], shuffled[index]];
+  }
+  return shuffled;
+}
+
+function searchLibrary(type: string, term: string): unknown {
+  const decodedTerm = decodeURIComponent(term);
+  if (!fuzzyTracks || !fuzzyAlbums) {
+    throw new Error('Library search is not loaded');
+  }
+
+  return type === 'album'
+    ? fuzzyAlbums.search(decodedTerm)
+    : shuffle(fuzzyTracks.search(decodedTerm)).slice(0, randomQueueLimit);
+}
+
+function isEmpty(_type: string, resList: unknown): boolean {
+  return (resList as unknown[]).length === 0;
+}
+
+function handleLibrary(error: NodeJS.ErrnoException | null, data: Buffer): void {
+  if (error) {
+    return;
+  }
+
+  const parsed = JSON.parse(data.toString()) as MusicLibrary;
+  if (parsed.version === undefined || parsed.version < currentLibVersion) {
+    musicLibrary = null;
+    return;
+  }
+
+  musicLibrary = parsed;
+  void loadLibrarySearch(null, false).catch((err: unknown) => {
+    logger.error('Could not load cached library search index', err);
+  });
+}
+
+function readLibrary(): void {
+  fs.readFile(libraryPath, handleLibrary);
+}
+
+const libraryDef: MusicService = {
   country: '',
   search: {
     album: '',
@@ -39,7 +336,6 @@ const libraryDef: any = {
     station: ''
   },
   token: 'RINCON_AssociatedZPUDN',
-
   service: setService,
   term: getSearchTerm,
   tracks: loadTracks,
@@ -52,239 +348,6 @@ const libraryDef: any = {
   urimeta: getURIandMetadata,
   headers: getTokenHeaders,
   authenticate: authenticateService
-}
+};
 
-function getTokenHeaders() {
-  return null;
-}
-
-function authenticateService() {
-  return Promise.resolve();
-}
-
-function setService(player:  any, p_accountId:  any, p_accountSN:  any, p_country:  any) {
-}
-
-function getSearchTerm(type:  any, term:  any, artist:  any, album:  any, track:  any) {
-  var newTerm = artist;
-
-  if ((newTerm != '') && ((artist != '') || (track != ''))) {
-    newTerm += ' ';
-  }
-  newTerm += (type == 'album') ? album : track;
-
-  return newTerm;
-}
-
-function getMetadata(type:  any, id:  any, name:  any) {
-  const token = libraryDef.token;
-  const parentUri = libraryDef.parent[type] + name;
-  const objectType = libraryDef.object[type];
-
-  return `<DIDL-Lite xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:upnp="urn:schemas-upnp-org:metadata-1-0/upnp/"
-          xmlns:r="urn:schemas-rinconnetworks-com:metadata-1-0/" xmlns="urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/">
-          <item id="${id}" parentID="${parentUri}" restricted="true"><dc:title></dc:title><upnp:class>object.${objectType}</upnp:class>
-          <desc id="cdudn" nameSpace="urn:schemas-rinconnetworks-com:metadata-1-0/">${token}</desc></item></DIDL-Lite>`;
-}
-
-function getURIandMetadata(type:  any, resList:  any) {
-  return { uri: resList[0].uri, metadata: resList[0].metadata };
-}
-
-function loadTracks(type:  any, tracksJson:  any) {
-  var tracks = {
-    count: 0,
-    isArtist: false,
-    queueTracks: []
-  };
-
-  if (tracksJson.length > 0) {
-    var albumName = tracksJson[0].item.albumName;
-
-    // Filtered list of tracks to play
-    tracks.queueTracks = tracksJson.reduce(function (tracksArray: any, track: any) {
-      if (tracks.count < randomQueueLimit) {
-        var skip = false;
-
-        if (type == 'song') {
-          for (var j = 0; (j < tracksArray.length) && !skip; j++) {
-            // Skip duplicate songs
-            skip = (track.item.trackName == tracksArray[j].trackName);
-          }
-        } else {
-          skip = (track.item.albumName != albumName);
-        }          
-        if (!skip) {
-          tracksArray.push({
-            trackName: track.item.trackName,
-            artistName: track.item.artistName,
-            albumTrackNumber:track.item.albumTrackNumber, 
-            uri: track.item.uri,
-            metadata: track.item.metadata
-          });
-          tracks.count++;
-        }
-      }
-      return tracksArray;
-    }, []);
-  }
-  
-  if (type == 'album') {
-    tracks.queueTracks.sort(function (a: any, b: any) {
-      if (a.artistName != b.artistName) {
-        return (a.artistName > b.artistName)? 1 : -1;
-      } else {
-        return a.albumTrackNumber - b.albumTrackNumber;
-      }
-    });
-  }
-
-  return tracks;
-}
-
-function libIsEmpty() {
-  return (musicLibrary == null);
-}
-
-function loadFuse(items:  any, fuzzyKeys:  any) {
-  return new Promise((resolve: any) => {
-    return resolve(new Fuse(items, { keys: fuzzyKeys, threshold: 0.2, maxPatternLength: 100, ignoreLocation: true }));
-  });
-}
-
-function isFinished(chunk:  any) {
-  return chunk.startIndex + chunk.numberReturned >= chunk.totalMatches;
-}
-
-function loadLibrary(player:  any) {
-
-  if (isLoading) {
-    return Promise.resolve('Loading');
-  }
-  logger.info('Loading Library');
-  isLoading = true;
-
-  let library: any = {
-    version: currentLibVersion,
-    tracks: {
-      items: [],
-      startIndex: 0,
-      numberReturned: 0,
-      totalMatches: 1
-    }
-  };
-
-  let result = library.tracks;
-
-  let getChunk = (chunk: any) => {
-    chunk.items.reduce(function (tracksArray: any, item: any) {
-      if ((item.uri != undefined) && (item.artist != undefined) && (item.album != undefined)) {
-        var metadataID = libraryDef.metastart['song'] + item.uri.substring(item.uri.indexOf(':') + 1);
-        var metadata = getMetadata('song', metadataID, encodeURIComponent(item.artist) + '/' + encodeURIComponent(item.album));
-        result.items.push({
-          artistTrackSearch: item.artist + ' ' + item.title,
-          artistAlbumSearch: item.artist + ' ' + item.album,
-          trackName: item.title,
-          artistName: item.artist,
-          albumName: item.album,
-          albumTrackNumber: item.albumTrackNumber,
-          uri: item.uri,
-          metadata: metadata
-        });
-      }
-    }, []);
-
-    result.numberReturned += chunk.numberReturned;
-    result.totalMatches = chunk.totalMatches;
-    logger.info(`Tracks returned: ${result.numberReturned}, Total matches: ${result.totalMatches}`);
-
-    if (isFinished(chunk)) {
-      return new Promise((resolve: any, reject: any) => {
-        fs.writeFile(libraryPath, JSON.stringify(library), (err: any) => {
-          isLoading = false;
-          if (err) {
-            console.log("ERROR: " + JSON.stringify(err));
-            return reject(err);
-          } else {
-            return resolve(library);
-          }
-        });
-      });
-    }
-
-    // Recursive promise chain
-    return player.browse('A:TRACKS', chunk.startIndex + chunk.numberReturned, 0)
-      .then(getChunk);
-  }
-
-  return Promise.resolve(result)
-    .then(getChunk)
-    .catch((err: any) => {
-      logger.error('Error when recursively trying to load library using browse()', err);
-    });
-}
-
-function loadLibrarySearch(player:  any, load:  any) {
-  if (load || (musicLibrary == null)) {
-    return loadLibrary(player)
-      .then((result: any) => {
-        musicLibrary = result;
-      })
-      .then(() => loadFuse(musicLibrary.tracks.items, ["artistTrackSearch", "artistName", "trackName"]))
-      .then((result: any) => {
-        fuzzyTracks = result;
-      })
-      .then(() => loadFuse(musicLibrary.tracks.items, ["artistAlbumSearch", "albumName", "artistName"]))
-      .then((result: any) => {
-        fuzzyAlbums = result;
-        return Promise.resolve("Library and search loaded");
-      });
-  } else {
-    return loadFuse(musicLibrary.tracks.items, ["artistTrackSearch", "artistName", "trackName"])
-      .then((result: any) => {
-        fuzzyTracks = result;
-      })
-      .then(() => loadFuse(musicLibrary.tracks.items, ["artistAlbumSearch", "albumName", "artistName"]))
-      .then((result: any) => {
-        fuzzyAlbums = result;
-        return Promise.resolve("Library search loaded");
-      });
-  }
-}
-
-Array.prototype.shuffle=function(){
-  var len = this.length,temp,i
-  while(len){
-    i=Math.random()*len-- >>> 0;
-    temp=this[len],this[len]=this[i],this[i]=temp;
-  }
-  return this;
-}
-
-function searchLibrary(type:  any, term:  any) {
-  term = decodeURIComponent(term);
-
-  return (type == 'album') ? fuzzyAlbums.search(term) : fuzzyTracks.search(term).shuffle().slice(0,randomQueueLimit);
-}
-
-function isEmpty(type:  any, resList:  any) {
-  return (resList.length == 0);
-}
-
-function handleLibrary(err:  any, data:  any) {
-  if (!err) {
-    musicLibrary = JSON.parse(data);
-    if ((musicLibrary.version == undefined) || (musicLibrary.version < currentLibVersion)) { // Ignore if older format
-      musicLibrary = null;
-    }
-    if (musicLibrary != null) {
-      loadLibrarySearch(null, false);
-    }
-  }
-}
-
-function readLibrary() {
-  fs.readFile(libraryPath, handleLibrary);
-}
-
-module.exports = libraryDef;
+export = libraryDef;

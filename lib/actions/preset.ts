@@ -1,10 +1,9 @@
 import type { ActionApi, PlayerLike } from '../../src/types/actions';
-
-const presets = require('../presets-loader');
+import presets = require('../presets-loader');
 
 function presetsAction(player: PlayerLike, values: string[]): Promise<unknown> {
   const value = decodeURIComponent(values[0]);
-  let preset: any;
+  let preset: unknown;
   if (value.startsWith('{')) {
     preset = JSON.parse(value);
   } else {

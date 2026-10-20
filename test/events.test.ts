@@ -47,5 +47,5 @@ test('event server sends events and caps subscribers', async () => {
   events.addClient(overflow.res);
   assert.strictEqual(overflow.res.statusCode, 503);
   assert.match(overflow.writes.join(''), /Too many event subscribers/);
-  created.forEach((client) => client.close());
+  created.forEach((client) => { client.close(); });
 });

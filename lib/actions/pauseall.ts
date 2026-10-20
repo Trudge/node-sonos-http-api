@@ -1,6 +1,6 @@
-import type { ActionApi, PlayerLike, SonosSystemLike } from '../../src/types/actions';
+import type { ActionApi, PlayerLike, SonosSystemLike, ZoneGroupLike } from '../../src/types/actions';
+import logger = require('sonos-discovery/lib/helpers/logger');
 
-const logger = require('sonos-discovery/lib/helpers/logger');
 let pausedPlayers: string[] = [];
 
 function pauseAll(player: PlayerLike, values: string[]): Promise<unknown> {
@@ -26,8 +26,8 @@ function resumeAll(player: PlayerLike, values: string[]): Promise<unknown> {
 function doPauseAll(system: SonosSystemLike): Promise<unknown> {
   pausedPlayers = [];
   const promises = system.zones
-    .filter((zone: any) => zone.coordinator.state.playbackState === 'PLAYING')
-    .map((zone: any) => {
+    .filter((zone: ZoneGroupLike) => zone.coordinator.state.playbackState === 'PLAYING')
+    .map((zone: ZoneGroupLike) => {
       pausedPlayers.push(zone.uuid);
       return system.getPlayerByUUID(zone.uuid).pause();
     });
@@ -35,7 +35,7 @@ function doPauseAll(system: SonosSystemLike): Promise<unknown> {
 }
 
 function doResumeAll(system: SonosSystemLike): Promise<unknown> {
-  const promises = pausedPlayers.map((uuid: any) => system.getPlayerByUUID(uuid).play());
+  const promises = pausedPlayers.map((uuid: string) => system.getPlayerByUUID(uuid).play());
   pausedPlayers = [];
   return Promise.all(promises);
 }

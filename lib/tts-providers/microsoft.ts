@@ -1,28 +1,39 @@
-'use strict';
-const crypto = require('crypto');
-const fs = require('fs');
-const path = require('path');
-const fileDuration = require('../helpers/file-duration');
-const request = require('sonos-discovery/lib/helpers/request');
-const logger = require('sonos-discovery/lib/helpers/logger');
-const globalSettings = require('../../src/settings');
-const XmlEntities = require('html-entities').XmlEntities;
-const { safeComponent } = require('../../src/fs/safe-path');
+import crypto = require('node:crypto');
+import fs = require('node:fs');
+import path = require('node:path');
+import type { Readable } from 'node:stream';
+import fileDuration = require('../helpers/file-duration');
+import request = require('sonos-discovery/lib/helpers/request');
+import logger = require('sonos-discovery/lib/helpers/logger');
+import settings = require('../../src/settings');
+import { XmlEntities } from 'html-entities';
+import { safeComponent } from '../../src/fs/safe-path';
+
+interface TtsResult {
+  duration: number;
+  uri: string;
+}
+
+interface VoiceDefinition {
+  language: string;
+  gender: string;
+  font: string;
+}
 
 const xmlEntities = new XmlEntities();
 
 const APP_ID = '9aa44d9e6ec14da99231a9166fd50b0f';
 const INSTANCE_ID = crypto.randomBytes(16).toString('hex');
-const TOKEN_EXPIRATION = 590000; // 9:50 minutes in ms
+const TOKEN_EXPIRATION = 590000;
 const DEFAULT_SETTINGS = {
   name: 'ZiraRUS'
 };
 
-let bearerToken: any;
-let bearerExpires = Date.now();
+let bearerToken: string | undefined;
+let bearerExpires = 0;
 
-function generateBearerToken(apiKey:  any) {
-  return request({
+async function generateBearerToken(apiKey: string): Promise<void> {
+  const body = await request({
     uri: 'https://api.cognitive.microsoft.com/sts/v1.0/issueToken',
     method: 'POST',
     type: 'raw',
@@ -30,106 +41,78 @@ function generateBearerToken(apiKey:  any) {
       'Ocp-Apim-Subscription-Key': apiKey,
       'Content-Length': 0
     }
-  })
-    .then((body: any) => {
-      logger.debug(`Bearer token: body`);
-      bearerToken = body;
-      bearerExpires = Date.now() + TOKEN_EXPIRATION;
-    });
+  });
+  logger.debug('Bearer token refreshed');
+  bearerToken = String(body);
+  bearerExpires = Date.now() + TOKEN_EXPIRATION;
 }
 
-function format(lang:  any, gender:  any, name:  any, text:  any) {
+function format(language: string, gender: string, name: string, text: string): string {
   const escapedText = xmlEntities.encodeNonUTF(text);
-  return `<speak version='1.0' xml:lang='${lang}'><voice xml:lang='${lang}' xml:gender='${gender}' name='${name}'>${escapedText}</voice></speak>`;
+  return `<speak version='1.0' xml:lang='${language}'><voice xml:lang='${language}' xml:gender='${gender}' name='${name}'>${escapedText}</voice></speak>`;
 }
 
-function microsoft(phrase:  any, voiceName:  any) {
-  if (!globalSettings.microsoft || !globalSettings.microsoft.key) {
-    return Promise.resolve();
+async function microsoft(phrase: string, voiceName?: string): Promise<TtsResult | undefined> {
+  if (!settings.microsoft?.key) {
+    return undefined;
   }
 
-  const settings = Object.assign({}, DEFAULT_SETTINGS, globalSettings.microsoft);
-
+  const providerSettings = Object.assign({}, DEFAULT_SETTINGS, settings.microsoft);
   if (voiceName) {
-    settings.name = voiceName;
+    providerSettings.name = voiceName;
   }
 
   const phraseHash = crypto.createHash('sha1').update(phrase).digest('hex');
-  const filename = `microsoft-${phraseHash}-${safeComponent(settings.name)}.wav`;
-  const filepath = path.resolve(globalSettings.webroot, 'tts', filename);
-
+  const filename = `microsoft-${phraseHash}-${safeComponent(providerSettings.name)}.wav`;
+  const filepath = path.resolve(settings.webroot, 'tts', filename);
   const expectedUri = `/tts/${filename}`;
-  try {
-    fs.accessSync(filepath, fs.R_OK);
-    return fileDuration(filepath)
-      .then((duration: any) => {
-        return {
-          duration,
-          uri: expectedUri
-        };
-      });
 
-  } catch (err) {
+  try {
+    fs.accessSync(filepath, fs.constants.R_OK);
+    const duration = await fileDuration(filepath);
+    return { duration, uri: expectedUri };
+  } catch (_error) {
     logger.info(`announce file for phrase "${phrase}" does not seem to exist, downloading`);
   }
 
-  let promise = Promise.resolve();
   if (bearerExpires < Date.now()) {
-    // Refresh token
-    promise = generateBearerToken(settings.key);
+    await generateBearerToken(String(providerSettings.key));
   }
 
-  return promise.then(() => {
-    const voice = VOICE[settings.name];
-    if (!voice) {
-      throw new Error(`Voice name ${settings.name} could not be located in the list of valid voice names`);
-    }
+  const voice = VOICE[providerSettings.name];
+  if (!voice) {
+    throw new Error(`Voice name ${providerSettings.name} could not be located in the list of valid voice names`);
+  }
 
-    const ssml = format(voice.language, voice.gender, voice.font, phrase);
-    return request({
-      uri: 'https://speech.platform.bing.com/synthesize',
-      method: 'POST',
-      type: 'stream',
-      headers: {
-        Authorization: `Bearer ${bearerToken}`,
-        'Content-Type': 'application/ssml+xml',
-        'X-Microsoft-OutputFormat': 'riff-16khz-16bit-mono-pcm',
-        'X-Search-AppId': APP_ID,
-        'X-Search-ClientID': INSTANCE_ID,
-        'User-Agent': 'node-sonos-http-api',
-        'Content-Length': ssml.length
-      },
-      body: ssml
-    })
-      .then((res: any) => {
-        return new Promise<void>((resolve: any) => {
-
-          const file = fs.createWriteStream(filepath);
-          res.pipe(file);
-
-          file.on('close', () => {
-            resolve();
-          })
-        })
-
-      })
-      .then(() => {
-        return fileDuration(filepath);
-      })
-      .then((duration: any) => {
-        return {
-          duration,
-          uri: expectedUri
-        };
-      })
-      .catch((err: any) => {
-        logger.error(err);
-        throw err;
-      });
+  const ssml = format(voice.language, voice.gender, voice.font, phrase);
+  const response = await request<Readable>({
+    uri: 'https://speech.platform.bing.com/synthesize',
+    method: 'POST',
+    type: 'stream',
+    headers: {
+      Authorization: `Bearer ${bearerToken}`,
+      'Content-Type': 'application/ssml+xml',
+      'X-Microsoft-OutputFormat': 'riff-16khz-16bit-mono-pcm',
+      'X-Search-AppId': APP_ID,
+      'X-Search-ClientID': INSTANCE_ID,
+      'User-Agent': 'node-sonos-http-api',
+      'Content-Length': ssml.length
+    },
+    body: ssml
   });
+
+  await new Promise<void>((resolve, reject) => {
+    const file = fs.createWriteStream(filepath);
+    response.pipe(file);
+    file.on('close', resolve);
+    file.on('error', reject);
+  });
+
+  const duration = await fileDuration(filepath);
+  return { duration, uri: expectedUri };
 }
 
-const VOICE: Record<string, any> = {
+const VOICE: Record<string, VoiceDefinition> = {
   Hoda: { language: 'ar-EG', gender: 'Female', font: 'Microsoft Server Speech Text to Speech Voice (ar-EG, Hoda)' },
   Naayf: { language: 'ar-SA', gender: 'Male', font: 'Microsoft Server Speech Text to Speech Voice (ar-SA, Naayf)' },
   Ivan: { language: 'bg-BG', gender: 'Male', font: 'Microsoft Server Speech Text to Speech Voice (bg-BG, Ivan)' },
@@ -283,4 +266,4 @@ const VOICE: Record<string, any> = {
   }
 };
 
-module.exports = microsoft;
+export = microsoft;

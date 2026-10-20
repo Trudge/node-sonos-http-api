@@ -1,29 +1,47 @@
-import path = require('path');
+import path = require('node:path');
+import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { Settings } from '../types/settings';
+import type { ActionHandler, PlayerLike, SonosSystemLike } from '../types/actions';
+import requireDir = require('../../lib/helpers/require-dir');
+import request = require('sonos-discovery/lib/helpers/request');
+import logger = require('sonos-discovery/lib/helpers/logger');
+import HttpEventServer = require('./events');
 
-const requireDir = require('../../lib/helpers/require-dir');
-const request = require('sonos-discovery/lib/helpers/request');
-const logger = require('sonos-discovery/lib/helpers/logger');
-const HttpEventServer = require('./events');
+interface ActionOptions {
+  action: string;
+  values: string[];
+  player: PlayerLike;
+}
 
-type ActionHandler = (player: any, values: string[]) => Promise<any> | any;
+function isStream(value: unknown): boolean {
+  return Boolean(value) && typeof (value as { pipe?: unknown }).pipe === 'function';
+}
+
+function errorMessage(error: unknown): string {
+  if (error && typeof error === 'object') {
+    const value = error as { message?: unknown; error?: unknown };
+    if (typeof value.message === 'string') return value.message;
+    if (typeof value.error === 'string') return value.error;
+  }
+  return 'Unknown error';
+}
 
 class HttpAPI {
-  private actions: Record<string, ActionHandler> = {};
+  private actions: Record<string, ActionHandler> = Object.create(null);
   private events = new HttpEventServer();
-  private discovery: any;
+  private discovery: SonosSystemLike;
   private port: number;
   private settings: Settings;
 
-  constructor(discovery: any, settings: Settings) {
+  constructor(discovery: SonosSystemLike, settings: Settings) {
     this.discovery = discovery;
     this.settings = settings;
     this.port = settings.port;
 
-    discovery.on('transport-state', (player: any) => this.invokeWebhook('transport-state', player));
-    discovery.on('topology-change', (topology: any) => this.invokeWebhook('topology-change', topology));
-    discovery.on('volume-change', (volumeChange: any) => this.invokeWebhook('volume-change', volumeChange));
-    discovery.on('mute-change', (muteChange: any) => this.invokeWebhook('mute-change', muteChange));
+    discovery.on('transport-state', (player: unknown) => this.invokeWebhook('transport-state', player));
+    discovery.on('topology-change', (topology: unknown) => this.invokeWebhook('topology-change', topology));
+    discovery.on('volume-change', (volumeChange: unknown) => this.invokeWebhook('volume-change', volumeChange));
+    discovery.on('mute-change', (muteChange: unknown) => this.invokeWebhook('mute-change', muteChange));
 
     requireDir(path.join(__dirname, '../../lib/actions'), (registerAction: (api: HttpAPI) => void) => {
       registerAction(this);
@@ -42,13 +60,16 @@ class HttpAPI {
     this.actions[action] = handler;
   }
 
-  requestHandler(req: any, res: any): void {
-    if (req.url === '/favicon.ico') {
+  requestHandler(req: IncomingMessage, res: ServerResponse): void {
+    const url = req.url || '/';
+    const pathname = url.split('?')[0];
+
+    if (pathname === '/favicon.ico') {
       res.end();
       return;
     }
 
-    if (req.url === '/events') {
+    if (pathname === '/events') {
       this.events.addClient(res);
       return;
     }
@@ -60,46 +81,53 @@ class HttpAPI {
       return;
     }
 
-    const params = req.url.substring(1).split('/');
-    let player: any;
+    const params = pathname.substring(1).split('/');
+    let player: PlayerLike | undefined;
     try {
-      player = this.discovery.getPlayer(decodeURIComponent(params[0]));
-    } catch (error: any) {
+      player = this.discovery.getPlayer(decodeURIComponent(params[0] || ''));
+    } catch (error) {
       logger.error(`Unable to parse supplied URI component (${params[0]})`, error);
-      this.sendResponse(res, 500, { status: 'error', error: error.message });
+      this.sendResponse(res, 500, { status: 'error', error: errorMessage(error) });
       return;
     }
 
-    const opt: any = {};
+    let action: string;
+    let values: string[];
     if (player) {
-      opt.action = (params[1] || '').toLowerCase();
-      opt.values = params.splice(2);
+      action = (params[1] || '').toLowerCase();
+      values = params.splice(2);
     } else {
       player = this.discovery.getAnyPlayer();
-      opt.action = (params[0] || '').toLowerCase();
-      opt.values = params.splice(1);
+      action = (params[0] || '').toLowerCase();
+      values = params.splice(1);
     }
 
-    opt.player = player;
+    if (!player) {
+      this.sendResponse(res, 500, { status: 'error', error: 'No player available' });
+      return;
+    }
+
+    const options: ActionOptions = { action, values, player };
     Promise.resolve()
-      .then(() => this.handleAction(opt))
-      .then((response: any) => {
-        if (!response || response.constructor.name === 'IncomingMessage') {
-          response = { status: 'success' };
-        } else if (Array.isArray(response) && response.length > 0 && response[0].constructor.name === 'IncomingMessage') {
-          response = { status: 'success' };
-        }
-        this.sendResponse(res, 200, response);
+      .then(() => this.handleAction(options))
+      .then((response: unknown) => {
+        const body = !response || isStream(response)
+          || (Array.isArray(response) && response.length > 0 && isStream(response[0]))
+          ? { status: 'success' }
+          : response;
+        this.sendResponse(res, 200, body);
       })
-      .catch((error: any) => {
+      .catch((error: unknown) => {
         logger.error(error);
-        const message = error && (error.message || error.error) ? (error.message || error.error) : 'Unknown error';
-        this.sendResponse(res, error.statusCode || 500, { status: 'error', error: message });
+        const statusCode = error && typeof error === 'object'
+          ? Number((error as { statusCode?: unknown }).statusCode) || 500
+          : 500;
+        this.sendResponse(res, statusCode, { status: 'error', error: errorMessage(error) });
       });
   }
 
-  private sendResponse(res: any, code: number, body: any): void {
-    const jsonResponse = JSON.stringify(body);
+  private sendResponse(res: ServerResponse, code: number, body: unknown): void {
+    const jsonResponse = JSON.stringify(body) ?? 'null';
     res.statusCode = code;
     res.setHeader('Content-Length', Buffer.byteLength(jsonResponse));
     res.setHeader('Content-Type', 'application/json;charset=utf-8');
@@ -107,15 +135,15 @@ class HttpAPI {
     res.end();
   }
 
-  private handleAction(options: any): Promise<any> | any {
+  private handleAction(options: ActionOptions): Promise<unknown> | unknown {
     const action = this.actions[options.action];
-    if (!action) {
+    if (!Object.hasOwn(this.actions, options.action) || !action) {
       return Promise.reject({ error: `action '${options.action}' not found` });
     }
     return action(options.player, options.values);
   }
 
-  private invokeWebhook(type: string, data: any): void {
+  private invokeWebhook(type: string, data: unknown): void {
     let typeName = 'type';
     let dataName = 'data';
     if (this.settings.webhookType) typeName = String(this.settings.webhookType);
@@ -140,7 +168,8 @@ class HttpAPI {
       method: 'POST',
       uri: String(webhook),
       headers,
-      body
+      body,
+      timeout: 5000
     }).catch(() => {
       logger.error('Could not reach the configured webhook endpoint. Verify that the receiving end is up and running.');
     });

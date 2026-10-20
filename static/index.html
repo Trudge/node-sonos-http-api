@@ -30,8 +30,34 @@
       <div class="docs">
         <h2>Info</h2>
         <p><span class="method">GET</span> <a href="/zones">/zones</a></p>
-        <p><span class="method">GET</span> <a href="/favorites">/favorites</a></p>
-        <p><span class="method">GET</span> <a href="/playlists">/playlists</a></p>
+        <p><span class="method">GET</span> <a href="/favorites">/favorites[/detailed]</a> <span class="explanation">alias: /favourites</span></p>
+        <p><span class="method">GET</span> <a href="/playlists">/playlists[/detailed]</a></p>
+        <p><span class="method">GET</span> <a href="/services/all">/services/all</a></p>
+        <p><span class="method">GET</span> <a href="/debug">/debug</a></p>
+        <p><span class="method">GET</span> <a href="/events">/events</a> <span class="explanation">server-sent events stream</span></p>
+      </div>
+
+      <div class="docs">
+        <h2>Reporting</h2>
+        <p><span class="method">GET</span> /report <span class="explanation">same as /report/summary</span></p>
+        <p><span class="method">GET</span> /report/summary</p>
+        <p><span class="method">GET</span> /report/system</p>
+        <p><span class="method">GET</span> /report/zones</p>
+        <p><span class="method">GET</span> /report/groups <span class="explanation">alias of /report/zones</span></p>
+        <p><span class="method">GET</span> /report/players</p>
+        <p><span class="method">GET</span> /report/players/{room}</p>
+        <p><span class="method">GET</span> /report/players/{room}/state</p>
+        <p><span class="method">GET</span> /report/players/{room}/capabilities</p>
+        <p><span class="method">GET</span> /report/players/{room}/queue/{limit}/{offset}</p>
+        <p><span class="method">GET</span> /report/player/{room} <span class="explanation">alias of /report/players/{room}</span></p>
+        <p><span class="method">GET</span> /report/sources</p>
+        <p><span class="method">GET</span> /report/favorites</p>
+        <p><span class="method">GET</span> /report/playlists</p>
+        <p><span class="method">GET</span> /report/services</p>
+        <p><span class="method">GET</span> /report/alarms</p>
+        <p><span class="method">GET</span> /report/library/{room}/{objectId}/{start}/{limit}</p>
+        <p><span class="method">GET</span> /report/diagnostics</p>
+        <p><span class="method">GET</span> /report/export</p>
       </div>
 
       <div class="docs">
@@ -41,9 +67,14 @@
         <p><span class="method">GET</span> /pauseall/{timeout in minutes (optional)}</p>
         <p><span class="method">GET</span> /resumeall/{timeout in minutes (optional)}</p>
         <p><span class="method">GET</span> /reindex</p>
-        <p><span class="method">GET</span> /sleep/{timeout in seconds or timestamp HH:MM:SS or off}</p>
+        <p><span class="method">GET</span> /sleep/{timeout in seconds or off}</p>
+        <p><span class="method">GET</span> /preset <span class="explanation">lists available preset names</span></p>
         <p><span class="method">GET</span> /preset/{JSON preset}</p>
         <p><span class="method">GET</span> /preset/{predefined preset name}</p>
+        <p><span class="method">GET</span> /sayall/{phrase}[/{language code or voice}][/{announce volume}]</p>
+        <p><span class="method">GET</span> /saypreset/{preset}/{phrase}[/{language code or voice}]</p>
+        <p><span class="method">GET</span> /clipall/{filename}[/{announce volume}]</p>
+        <p><span class="method">GET</span> /clippreset/{preset}/{filename}</p>
       </div>
 
       <div class="docs">
@@ -57,21 +88,27 @@
           <li>play</li>
           <li>pause</li>
           <li>playpause <span class="explanation">toggles playing state</span></li>
-          <li>trackseek/{seconds into song, i.e. 60 for 1:00, 120 for 2:00 etc.}</li>
           <li>next</li>
           <li>previous</li>
+        </ul>
+
+        <h4>Seek</h4>
+        <ul>
+          <li>seek/{seconds into track} <span class="explanation">alias: timeseek</span></li>
+          <li>timeseek/{seconds into track}</li>
+          <li>trackseek/{queue index}</li>
         </ul>
 
         <h4>Volume</h4>
         <ul>
           <li>volume/{absolute volume}</li>
           <li>volume/{+ or -}{relative volume}</li>
-          <li>groupVolume/{absolute volume}</li>
-          <li>groupVolume/{+ or -}{relative volume}</li>
+          <li>groupvolume/{absolute volume}</li>
+          <li>groupvolume/{+ or -}{relative volume}</li>
           <li>mute</li>
           <li>unmute</li>
-          <li>groupMute</li>
-          <li>groupUnmute</li>
+          <li>groupmute <span class="explanation">alias: mutegroup</span></li>
+          <li>groupunmute <span class="explanation">alias: unmutegroup</span></li>
           <li>togglemute</li>
           <li>lockvolumes</li>
           <li>unlockvolumes <span class="explanation"><span class="experimental">experimental</span> enforce the volume that was selected when locking!</span></li>
@@ -79,18 +116,18 @@
 
         <h4>Playback Settings</h4>
         <ul>
-          <li>favorite</li>
-          <li>playlist</li>
-          <li>repeat/{on | off}</li>
-          <li>shuffle/{on | off}</li>
-          <li>crossfade/{on | off}</li>
+          <li>favorite/{favorite name} <span class="explanation">alias: favourite</span></li>
+          <li>playlist/{playlist name}</li>
+          <li>repeat/{on | off | one | toggle}</li>
+          <li>shuffle/{on | off | toggle}</li>
+          <li>crossfade/{on | off | toggle}</li>
         </ul>
 
         <h4>Queue</h4>
         <ul>
-          <li>queue</li>
+          <li>queue[/{limit}[/{offset}]][/detailed]</li>
           <li>clearqueue</li>
-          <li>seek/{queue index}</li>
+          <li>trackseek/{queue index}</li>
         </ul>
 
         <h4>Room Grouping</h4>
@@ -102,14 +139,43 @@
           <li>leave (alias of isolate)</li>
         </ul>
 
-        <h4>Other</h4>
+        <h4>Announcements</h4>
         <ul>
-          <li>say</li>
+          <li>say/{phrase}[/{language code or voice}][/{announce volume}]</li>
+          <li>clip/{filename}[/{announce volume}]</li>
         </ul>
 
-        <h4>Internals</h4>
+        <h4>Equalizer</h4>
+        <ul>
+          <li>nightmode/{on | off | toggle}</li>
+          <li>speechenhancement/{on | off | toggle}</li>
+          <li>bass/{-10 through 10}</li>
+          <li>treble/{-10 through 10}</li>
+        </ul>
+
+        <h4>Sources and Music Services</h4>
+        <ul>
+          <li>linein <span class="explanation">selects line-in for the zone</span></li>
+          <li>linein/{source player name} <span class="explanation">selects line-in from another player</span></li>
+          <li>sub/{on | off}</li>
+          <li>sub/gain/{value}</li>
+          <li>sub/crossover/{frequency in hz}</li>
+          <li>sub/polarity/{0 | 1}</li>
+          <li>spotify/{now | next | queue}/{spotify URI}</li>
+          <li>applemusic/{now | next | queue}/{song | album | playlist}:{id}</li>
+          <li>amazonmusic/{now | next | queue}/{song | album}:{id}</li>
+          <li>napster/{now | next | queue}/{song | album}:{id}</li>
+          <li>aldilifemusic/{now | next | queue}/{song | album}:{id}</li>
+          <li>tunein/{play | set}/{station id}</li>
+          <li>bbcsounds/{play | set}/{stream code}</li>
+          <li>siriusxm/{channel number or station name}</li>
+          <li>musicsearch/{apple | spotify | deezer | elite | library}/{album | song | station | playlist | load}[/{search term}]</li>
+        </ul>
+
+        <h4>Other</h4>
         <ul>
           <li>state <span class="explanation">returns a json-representation of the current state of player</span></li>
+          <li>setavtransporturi/{encoded URI}</li>
         </ul>
       </div>
 

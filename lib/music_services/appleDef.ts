@@ -1,180 +1,201 @@
-'use strict';
-const appleDef: any = {
-  country:   '&country=',
-  search:    {
-               album:   'https://itunes.apple.com/search?media=music&limit=1&entity=album&attribute=albumTerm&term=',
-               song:    'https://itunes.apple.com/search?media=music&limit=50&entity=song&term=',
-               station: 'https://itunes.apple.com/search?media=music&limit=50&entity=musicArtist&term='
-             },
-  metastart: {
-               album:   '0004206calbum%3a',
-               song:    '00032020song%3a',
-               station: '000c206cradio%3ara.'
-             },
-  parent:    {
-               album:   '00020000album:',
-               song:    '00020000song:',
-               station: '00020000radio:'
-             },
-  object:    {
-               album:   'container.album.musicAlbum.#AlbumView',
-               song:    'item.audioItem.musicTrack.#SongTitleWithArtistAndAlbum',
-               station: 'item.audioItem.audioBroadcast'
-             },
-  
-  service:   setService,
-  term:      getSearchTerm,
-  tracks:    loadTracks,
-  empty:     isEmpty,
-  metadata:  getMetadata,
-  urimeta:   getURIandMetadata,
-  headers:   getTokenHeaders,
-  authenticate: authenticateService
-}  
+import type { PlayerLike } from '../../src/types/actions';
+import type { MusicService, MusicTrack, TrackList, UriMetadata } from './types';
 
-function getTokenHeaders() {
+interface AppleResult {
+  collectionId?: string | number;
+  collectionName?: string;
+  artistId?: string | number;
+  artistName?: string;
+  id?: string | number;
+  name?: string;
+  isStreamable?: boolean;
+  trackId?: string | number;
+  trackName?: string;
+}
+
+interface AppleResponse {
+  resultCount: number;
+  results: AppleResult[];
+}
+
+let sid: string | number = '';
+let serviceType: string | number = '';
+let _accountId = '';
+let accountSN = '';
+let _country = '';
+
+function getTokenHeaders(): null {
   return null;
-};
+}
 
-function authenticateService() {
+function authenticateService(): Promise<void> {
   return Promise.resolve();
 }
 
-function getURI(type:  any, id:  any): any {
-  if (type == 'album') {
-    return `x-rincon-cpcontainer:0004206calbum%3a${id}`;
-  } else 
-  if (type == 'song') {
-    return `x-sonos-http:song%3a${id}.mp4?sid=${sid}&flags=8224&sn=${accountSN}`;
-  } else
-  if (type == 'station') {
-    return `x-sonosapi-radio:radio%3ara.${id}?sid=${sid}&flags=8300&sn=${accountSN}`;
-  }
-}
-
-function getServiceToken() {
+function getServiceToken(): string {
   return `SA_RINCON${serviceType}_X_#Svc${serviceType}-0-Token`;
 }
 
-
-var sid = '';
-var serviceType = '';
-var accountId = '';
-var accountSN = '';
-var country = '';
-
-function setService(player:  any, p_accountId:  any, p_accountSN:  any, p_country:  any)
-{
-  sid = player.system.getServiceId('Apple Music');
-  serviceType = player.system.getServiceType('Apple Music');
-  accountId = p_accountId;
-  accountSN = p_accountSN;
-  country = p_country;
+function getURI(type: string, id: string): string {
+  if (type === 'album') {
+    return `x-rincon-cpcontainer:0004206calbum%3a${id}`;
+  }
+  if (type === 'song') {
+    return `x-sonos-http:song%3a${id}.mp4?sid=${sid}&flags=8224&sn=${accountSN}`;
+  }
+  if (type === 'station') {
+    return `x-sonosapi-radio:radio%3ara.${id}?sid=${sid}&flags=8300&sn=${accountSN}`;
+  }
+  return '';
 }
 
-function getSearchTerm(type:  any, term:  any, artist:  any, album:  any, track:  any) {
-  var newTerm = artist;
+const appleDef: MusicService = {
+  country: '&country=',
+  search: {
+    album: 'https://itunes.apple.com/search?media=music&limit=1&entity=album&attribute=albumTerm&term=',
+    song: 'https://itunes.apple.com/search?media=music&limit=50&entity=song&term=',
+    station: 'https://itunes.apple.com/search?media=music&limit=50&entity=musicArtist&term='
+  },
+  metastart: {
+    album: '0004206calbum%3a',
+    song: '00032020song%3a',
+    station: '000c206cradio%3ara.'
+  },
+  parent: {
+    album: '00020000album:',
+    song: '00020000song:',
+    station: '00020000radio:'
+  },
+  object: {
+    album: 'container.album.musicAlbum.#AlbumView',
+    song: 'item.audioItem.musicTrack.#SongTitleWithArtistAndAlbum',
+    station: 'item.audioItem.audioBroadcast'
+  },
+  service: setService,
+  term: getSearchTerm,
+  tracks: loadTracks,
+  empty: isEmpty,
+  metadata: getMetadata,
+  urimeta: getURIandMetadata,
+  headers: getTokenHeaders,
+  authenticate: authenticateService
+};
 
-  if ((newTerm != '') && ((artist != '') || (track != ''))) {
+function setService(
+  player: PlayerLike,
+  nextAccountId: string,
+  nextAccountSN: string,
+  nextCountry: string
+): void {
+  sid = player.system.getServiceId('Apple Music');
+  serviceType = player.system.getServiceType('Apple Music');
+  _accountId = nextAccountId;
+  accountSN = nextAccountSN;
+  _country = nextCountry;
+}
+
+function getSearchTerm(
+  type: string,
+  _term: string,
+  artist: string,
+  album: string,
+  track: string
+): string {
+  let newTerm = artist;
+
+  if (newTerm !== '' && (artist !== '' || track !== '')) {
     newTerm += ' ';
   }
-  newTerm += (type == 'album')?album:track;
+  newTerm += type === 'album' ? album : track;
   newTerm = encodeURIComponent(newTerm);
-  if (artist != '') {
+  if (artist !== '') {
     newTerm += '&attribute=artistTerm';
   }
-  if (track != '') {
+  if (track !== '') {
     newTerm += '&attribute=songTerm';
   }
-  
+
   return newTerm;
 }
 
-function getMetadata(type:  any, id:  any, name:  any, title:  any) {
+function getMetadata(
+  type: string,
+  id: string | number,
+  name: string,
+  title?: string
+): string {
   const token = getServiceToken();
-  const parentUri = appleDef.parent[type] + name;
-  const objectType = appleDef.object[type];
-  
-  if (type == 'station') {
-    title = title + ' Radio';
-  } else {
-    title = '';
-  }
+  const parentUri = (appleDef.parent[type] || '') + name;
+  const objectType = appleDef.object[type] || '';
+  const metadataTitle = type === 'station' ? `${title || ''} Radio` : '';
 
   return `<DIDL-Lite xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:upnp="urn:schemas-upnp-org:metadata-1-0/upnp/"
           xmlns:r="urn:schemas-rinconnetworks-com:metadata-1-0/" xmlns="urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/">
-          <item id="${id}" parentID="${parentUri}" restricted="true"><dc:title>${title}</dc:title><upnp:class>object.${objectType}</upnp:class>
+          <item id="${id}" parentID="${parentUri}" restricted="true"><dc:title>${metadataTitle}</dc:title><upnp:class>object.${objectType}</upnp:class>
           <desc id="cdudn" nameSpace="urn:schemas-rinconnetworks-com:metadata-1-0/">${token}</desc></item></DIDL-Lite>`;
 }
 
-function getURIandMetadata(type:  any, resList:  any)
-{
-  var Id = '';
-  var Title = '';
-  var Name = '';
-  var MetadataID = '';
-  var UaM = {
-              uri: '',
-              metadata: ''
-            };
+function getURIandMetadata(type: string, resList: unknown): UriMetadata {
+  const response = resList as AppleResponse;
+  let id: string | number = '';
+  let title = '';
 
-  if (type=='album') {
-    Id = resList.results[0].collectionId;
-    Title = resList.results[0].collectionName;
-  } else
-  if (type=='station') {
-    Id = resList.results[0].artistId;
-    Title = resList.results[0].artistName;
+  if (type === 'album') {
+    id = response.results[0].collectionId || '';
+    title = response.results[0].collectionName || '';
+  } else if (type === 'station') {
+    id = response.results[0].artistId || '';
+    title = response.results[0].artistName || '';
   } else {
-    Id = resList.results[0].id;
-    Title = resList.results[0].name;
+    id = response.results[0].id || '';
+    title = response.results[0].name || '';
   }
-  Name = Title.toLowerCase().replace(' radio','').replace('radio ','').replace("'","&apos;");
-  MetadataID = appleDef.metastart[type] + encodeURIComponent(Id);
-    
-  UaM.metadata = getMetadata(type, MetadataID, Name, Title);
-  UaM.uri = getURI(type, encodeURIComponent(Id));
-   
-  return UaM;
+
+  const name = String(title).toLowerCase().replace(' radio', '').replace('radio ', '').replace("'", '&apos;');
+  const metadataId = (appleDef.metastart[type] || '') + encodeURIComponent(String(id));
+
+  return {
+    metadata: getMetadata(type, metadataId, name, title),
+    uri: getURI(type, encodeURIComponent(String(id)))
+  };
 }
 
-function loadTracks(type:  any, tracksJson:  any) {
-  var tracks = { count : 0,
-                 isArtist : false,
-                 queueTracks : []
-                };
+function loadTracks(_type: string, tracksJson: unknown): TrackList {
+  const tracks: TrackList = {
+    count: 0,
+    isArtist: false,
+    queueTracks: []
+  };
+  const response = tracksJson as AppleResponse;
 
-  if (tracksJson.resultCount > 0) {
-    // Filtered list of tracks to play
-    tracks.queueTracks = tracksJson.results.reduce(function (tracksArray: any, track: any) {
+  if (response.resultCount > 0) {
+    tracks.queueTracks = response.results.reduce((tracksArray: MusicTrack[], track: AppleResult) => {
       if (track.isStreamable) {
-        var skip = false;
-  
-        for (var j=0; (j < tracksArray.length) && !skip ; j++) {
-          // Skip duplicate songs
-          skip = (track.trackName == tracksArray[j].trackName);
-        }
-                    
+        const skip = tracksArray.some((existing) => existing.trackName === track.trackName);
         if (!skip) {
-          var metadataID = appleDef.metastart['song'] + encodeURIComponent(track.trackId);
-          var metadata = getMetadata('song', metadataID, track.trackId, track.trackName);
-          var uri = getURI('song', encodeURIComponent(track.trackId));
+          const trackId = String(track.trackId ?? '');
+          const metadataId = (appleDef.metastart.song || '') + encodeURIComponent(trackId);
+          const metadata = getMetadata('song', metadataId, trackId, track.trackName);
+          const uri = getURI('song', encodeURIComponent(trackId));
 
-          tracksArray.push({trackName:track.trackName, artistName:track.artistName, uri:uri, metadata:metadata});
-          tracks.count++;
+          tracksArray.push({
+            trackName: track.trackName || '',
+            artistName: track.artistName || '',
+            uri,
+            metadata
+          });
+          tracks.count += 1;
         }
-      } 
+      }
       return tracksArray;
     }, []);
   }
-  
+
   return tracks;
 }
 
-function isEmpty(type:  any, resList:  any)
-{
-  return (resList.resultCount == 0);
+function isEmpty(_type: string, resList: unknown): boolean {
+  return (resList as AppleResponse).resultCount === 0;
 }
 
-module.exports = appleDef;
-
+export = appleDef;

@@ -1,55 +1,57 @@
-'use strict';
-const crypto = require('crypto');
-const fs = require('fs');
-const http = require('http');
-const path = require('path');
-const { PollyClient, SynthesizeSpeechCommand } = require('@aws-sdk/client-polly');
-const fileDuration = require('../helpers/file-duration');
-const settings = require('../../src/settings');
-const logger = require('sonos-discovery/lib/helpers/logger');
-const { safeComponent } = require('../../src/fs/safe-path');
+import crypto = require('node:crypto');
+import fs = require('node:fs');
+import path = require('node:path');
+import {
+  PollyClient,
+  SynthesizeSpeechCommand,
+  type SynthesizeSpeechCommandInput
+} from '@aws-sdk/client-polly';
+import fileDuration = require('../helpers/file-duration');
+import settings = require('../../src/settings');
+import logger = require('sonos-discovery/lib/helpers/logger');
+import { safeComponent } from '../../src/fs/safe-path';
+
+interface TtsResult {
+  duration: number;
+  uri: string;
+}
 
 const DEFAULT_SETTINGS = {
   OutputFormat: 'mp3',
   VoiceId: 'Joanna',
   TextType: 'text'
-};
+} as const;
 
-function polly(phrase:  any, voiceName:  any) {
+async function polly(phrase: string, voiceName?: string): Promise<TtsResult | undefined> {
   if (!settings.aws) {
-    return Promise.resolve();
-
+    return undefined;
   }
 
-  // Construct a filesystem neutral filename
-  const dynamicParameters = { Text: phrase };
-  const synthesizeParameters: any = Object.assign({}, DEFAULT_SETTINGS, dynamicParameters);
-  if (settings.aws.name) {
-    synthesizeParameters.VoiceId = settings.aws.name;
-  }
+  const synthesizeParameters: SynthesizeSpeechCommandInput = {
+    ...DEFAULT_SETTINGS,
+    Text: phrase
+  };
+
+  let voiceId = settings.aws.name || DEFAULT_SETTINGS.VoiceId;
   if (voiceName) {
-    synthesizeParameters.VoiceId = voiceName;
+    voiceId = voiceName;
   }
-  if (synthesizeParameters.VoiceId.endsWith('Neural')) {
+  if (voiceId.endsWith('Neural')) {
     synthesizeParameters.Engine = 'neural';
-    synthesizeParameters.VoiceId = synthesizeParameters.VoiceId.slice(0, -6);
+    voiceId = voiceId.slice(0, -6);
   }
+  synthesizeParameters.VoiceId = voiceId as SynthesizeSpeechCommandInput['VoiceId'];
 
   const phraseHash = crypto.createHash('sha1').update(phrase).digest('hex');
   const filename = `polly-${phraseHash}-${safeComponent(synthesizeParameters.VoiceId)}.mp3`;
   const filepath = path.resolve(settings.webroot, 'tts', filename);
-
   const expectedUri = `/tts/${filename}`;
+
   try {
-    fs.accessSync(filepath, fs.R_OK);
-    return fileDuration(filepath)
-      .then((duration: any) => {
-        return {
-          duration,
-          uri: expectedUri
-        };
-      });
-  } catch (err) {
+    fs.accessSync(filepath, fs.constants.R_OK);
+    const duration = await fileDuration(filepath);
+    return { duration, uri: expectedUri };
+  } catch (_error) {
     logger.info(`announce file for phrase "${phrase}" does not seem to exist, downloading`);
   }
 
@@ -58,19 +60,18 @@ function polly(phrase:  any, voiceName:  any) {
     credentials: settings.aws.credentials
   });
 
-  return client.send(new SynthesizeSpeechCommand(synthesizeParameters))
-    .then((data: any) => data.AudioStream.transformToByteArray())
-    .then((audio: any) => {
-      fs.writeFileSync(filepath, Buffer.from(audio));
-      return fileDuration(filepath);
-    })
-    .then((duration: any) => {
-      return {
-        duration,
-        uri: expectedUri
-      };
-    })
-    .finally(() => client.destroy());
+  try {
+    const data = await client.send(new SynthesizeSpeechCommand(synthesizeParameters));
+    if (!data.AudioStream) {
+      throw new Error('AWS Polly returned no audio stream');
+    }
+    const audio = await data.AudioStream.transformToByteArray();
+    await fs.promises.writeFile(filepath, audio);
+    const duration = await fileDuration(filepath);
+    return { duration, uri: expectedUri };
+  } finally {
+    client.destroy();
+  }
 }
 
-module.exports = polly;
+export = polly;

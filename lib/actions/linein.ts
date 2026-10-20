@@ -2,7 +2,7 @@ import type { ActionApi, PlayerLike } from '../../src/types/actions';
 
 function linein(player: PlayerLike, values: string[]): Promise<unknown> {
   const sourcePlayerName = values[0];
-  let lineinSourcePlayer = player;
+  let lineinSourcePlayer: PlayerLike | undefined = player;
   if (sourcePlayerName) {
     lineinSourcePlayer = player.system.getPlayer(decodeURIComponent(sourcePlayerName));
   }

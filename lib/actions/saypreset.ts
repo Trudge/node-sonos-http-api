@@ -1,33 +1,37 @@
 import type { ActionApi, PlayerLike } from '../../src/types/actions';
-
-const tryDownloadTTS = require('../helpers/try-download-tts');
-const presetAnnouncement = require('../helpers/preset-announcement');
-const presets = require('../presets-loader');
+import tryDownloadTTS = require('../helpers/try-download-tts');
+import presetAnnouncement = require('../helpers/preset-announcement');
+import presets = require('../presets-loader');
 
 let port: number;
 
-function sayPreset(player: PlayerLike, values: string[]): Promise<unknown> {
+async function sayPreset(player: PlayerLike, values: string[]): Promise<unknown> {
   const presetName = decodeURIComponent(values[0]);
-  const preset = presets[presetName];
-  if (!preset) return Promise.reject(new Error(`No preset named ${presetName} could be found`));
+  const preset = presets[presetName] as Parameters<typeof presetAnnouncement>[2] | undefined;
+  if (!preset) {
+    throw new Error(`No preset named ${presetName} could be found`);
+  }
 
   let text: string;
   try {
     text = decodeURIComponent(values[1]);
-  } catch (err: any) {
-    if (err instanceof URIError) {
-      err.message = `The encoded phrase ${values[0]} could not be URI decoded. Make sure your url encoded values (%xx) are within valid ranges. xx should be hexadecimal representations`;
+  } catch (error) {
+    if (error instanceof URIError) {
+      error.message = `The encoded phrase ${values[0]} could not be URI decoded. Make sure your url encoded values (%xx) are within valid ranges. xx should be hexadecimal representations`;
     }
-    return Promise.reject(err);
+    throw error;
   }
 
-  return tryDownloadTTS(text, values[2]).then((result: any) =>
-    presetAnnouncement(
-      player.system,
-      `http://${player.system.localEndpoint}:${port}${result.uri}`,
-      preset,
-      result.duration
-    )
+  const result = await tryDownloadTTS(text, values[2]);
+  if (!result) {
+    throw new Error('No TTS provider produced audio for this phrase');
+  }
+
+  return presetAnnouncement(
+    player.system,
+    `http://${player.system.localEndpoint}:${port}${result.uri}`,
+    preset,
+    result.duration
   );
 }
 

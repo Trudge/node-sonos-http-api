@@ -1,7 +1,7 @@
 import type { ActionApi, PlayerLike } from '../../src/types/actions';
 
 function playpause(player: PlayerLike): Promise<unknown> {
-  const ret: any = { status: 'success', paused: false };
+  const ret: { status: string; paused: boolean } = { status: 'success', paused: false };
   if (player.coordinator.state.playbackState === 'PLAYING') {
     ret.paused = true;
     return player.coordinator.pause().then(() => ret);

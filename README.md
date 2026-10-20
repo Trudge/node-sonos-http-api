@@ -53,8 +53,10 @@ GET /report/diagnostics
 GET /report/export
 ```
 
-`/report/export` returns a versioned snapshot without credentials. Player
-identity fields come from each device's local `device_description.xml`.
+`/report/export` returns a versioned snapshot without credentials. It removes
+favorite/playlist metadata and device serial/MAC addresses, and lists the
+applied redactions in the `redactions` field. Player identity fields come from
+each device's local `device_description.xml`.
 
 Development
 -----------
@@ -64,6 +66,7 @@ npm install
 npm run build       # TypeScript -> dist/
 npm test            # node:test via tsx
 npm run typecheck   # tsc --noEmit
+npm run lint        # Biome lint for lib/, src/, and test/
 npm run coverage    # c8 with coverage thresholds
 npm run dev         # tsx src/server.ts
 

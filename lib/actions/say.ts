@@ -1,21 +1,19 @@
 import type { ActionApi, PlayerLike } from '../../src/types/actions';
-
-const tryDownloadTTS = require('../helpers/try-download-tts');
-const singlePlayerAnnouncement = require('../helpers/single-player-announcement');
-const settings = require('../../src/settings');
+import tryDownloadTTS = require('../helpers/try-download-tts');
+import singlePlayerAnnouncement = require('../helpers/single-player-announcement');
+import settings = require('../../src/settings');
 
 let port: number;
-let system: any;
 
-function say(player: PlayerLike, values: string[]): Promise<unknown> {
+async function say(player: PlayerLike, values: string[]): Promise<unknown> {
   let text: string;
   try {
     text = decodeURIComponent(values[0]);
-  } catch (err: any) {
-    if (err instanceof URIError) {
-      err.message = `The encoded phrase ${values[0]} could not be URI decoded. Make sure your url encoded values (%xx) are within valid ranges. xx should be hexadecimal representations`;
+  } catch (error) {
+    if (error instanceof URIError) {
+      error.message = `The encoded phrase ${values[0]} could not be URI decoded. Make sure your url encoded values (%xx) are within valid ranges. xx should be hexadecimal representations`;
     }
-    return Promise.reject(err);
+    throw error;
   }
 
   let announceVolume: string | number;
@@ -27,18 +25,20 @@ function say(player: PlayerLike, values: string[]): Promise<unknown> {
     announceVolume = values[2] || settings.announceVolume || 40;
   }
 
-  return tryDownloadTTS(text, language).then((result: any) =>
-    singlePlayerAnnouncement(
-      player,
-      `http://${system.localEndpoint}:${port}${result.uri}`,
-      announceVolume,
-      result.duration
-    )
+  const result = await tryDownloadTTS(text, language);
+  if (!result) {
+    throw new Error('No TTS provider produced audio for this phrase');
+  }
+
+  return singlePlayerAnnouncement(
+    player,
+    `http://${player.system.localEndpoint}:${port}${result.uri}`,
+    announceVolume,
+    result.duration
   );
 }
 
 export = function (api: ActionApi): void {
   port = api.getPort();
   api.registerAction('say', say);
-  system = api.discovery;
 };

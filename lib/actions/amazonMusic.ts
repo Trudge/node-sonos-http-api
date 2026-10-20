@@ -1,6 +1,7 @@
-'use strict';
-function getMetadata(id: any, parentUri: any, type: any, title: any) {
-return `<DIDL-Lite xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:upnp="urn:schemas-upnp-org:metadata-1-0/upnp/" xmlns:r="urn:schemas-rinconnetworks-com:metadata-1-0/" xmlns="urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/">
+import type { ActionApi, PlayerLike } from '../../src/types/actions';
+
+function getMetadata(id: string, parentUri: string, type: string, title: string): string {
+  return `<DIDL-Lite xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:upnp="urn:schemas-upnp-org:metadata-1-0/upnp/" xmlns:r="urn:schemas-rinconnetworks-com:metadata-1-0/" xmlns="urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/">
 <item id="${id}" parentID="${parentUri}" restricted="true">
   <dc:title>"${title}"</dc:title>
   <upnp:class>${type}</upnp:class>
@@ -9,11 +10,11 @@ return `<DIDL-Lite xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:upnp="urn:s
 </DIDL-Lite>`;
 }
 
-function getSongUri(id: any) {
+function getSongUri(id: string): string {
   return `x-sonosapi-hls-static:catalog%2ftracks%2f${id}%2f%3falbumAsin%3dB01JDKZWK0?sid=201&flags=0&sn=4`;
 }
 
-function getAlbumUri(id: any) {
+function getAlbumUri(id: string): string {
   return `x-rincon-cpcontainer:1004206ccatalog%2falbums%2f${id}%2f%23album_desc?sid=201&flags=8300&sn=4`;
 }
 
@@ -22,58 +23,74 @@ const uriTemplates: Record<string, (id: string) => string> = {
   album: getAlbumUri
 };
 
-const CLASSES: Record<string, string> = {
+const classes: Record<string, string> = {
   song: 'object.container.album.musicAlbum.#AlbumView',
   album: 'object.container.album.musicAlbum'
 };
 
-const METADATA_URI_STARTERS: Record<string, string> = {
+const metadataUriStarters: Record<string, string> = {
   song: '10030000catalog%2ftracks%2f',
   album: '1004206ccatalog'
 };
 
-const METADATA_URI_ENDINGS: Record<string, string> = {
+const metadataUriEndings: Record<string, string> = {
   song: '%2f%3falbumAsin%3d',
   album: '%2f%23album_desc'
 };
 
-
-const PARENTS: Record<string, string> = {
+const parents: Record<string, string> = {
   song: '1004206ccatalog%2falbums%2f',
   album: '10052064catalog%2fartists%2f'
 };
 
-function amazonMusic(player: any, values: any) {
+async function amazonMusic(player: PlayerLike, values: string[]): Promise<unknown> {
   const action = values[0];
   const track = values[1];
-  const type = track.split(':')[0];
-  const trackID = track.split(':')[1];
 
-  var nextTrackNo = 0;
+  if (!action || !track) {
+    throw new Error('Expected action and Amazon Music track');
+  }
 
-  const metadataID = METADATA_URI_STARTERS[type] + encodeURIComponent(trackID) + METADATA_URI_ENDINGS[type];
+  const [type, trackId] = track.split(':');
+  const uriTemplate = uriTemplates[type];
+  const objectClass = classes[type];
+  const metadataStarter = metadataUriStarters[type];
+  const metadataEnding = metadataUriEndings[type];
+  const parent = parents[type];
 
-  const metadata = getMetadata(metadataID, PARENTS[type], CLASSES[type], '');
-  const uri = uriTemplates[type](encodeURIComponent(trackID));
+  if (!trackId || !uriTemplate || !objectClass || !metadataStarter || !metadataEnding || !parent) {
+    throw new Error(`Unsupported Amazon Music track type: ${type}`);
+  }
 
-  if (action == 'queue') {
+  const encodedTrackId = encodeURIComponent(trackId);
+  const metadataId = metadataStarter + encodedTrackId + metadataEnding;
+  const metadata = getMetadata(metadataId, parent, objectClass, '');
+  const uri = uriTemplate(encodedTrackId);
+  const nextTrackNo = player.coordinator.state.trackNo + 1;
+
+  if (action === 'queue') {
     return player.coordinator.addURIToQueue(uri, metadata);
-  } else if (action == 'now') {
-    nextTrackNo = player.coordinator.state.trackNo + 1;
-    let promise = Promise.resolve();
-    if (player.coordinator.avTransportUri.startsWith('x-rincon-queue') === false) {
-      promise = promise.then(() => player.coordinator.setAVTransport(`x-rincon-queue:${player.coordinator.uuid}#0`));
-    }
+  }
 
-    return promise.then(() => player.coordinator.addURIToQueue(uri, metadata, true, nextTrackNo))
-      .then(() => { if (nextTrackNo != 1) player.coordinator.nextTrack() })
-      .then(() => player.coordinator.play());
-  } else if (action == 'next') {
-    nextTrackNo = player.coordinator.state.trackNo + 1;
+  if (action === 'now') {
+    if (!player.coordinator.avTransportUri.startsWith('x-rincon-queue')) {
+      await player.coordinator.setAVTransport(`x-rincon-queue:${player.coordinator.uuid}#0`);
+    }
+    await player.coordinator.addURIToQueue(uri, metadata, true, nextTrackNo);
+    if (nextTrackNo !== 1) {
+      await player.coordinator.nextTrack();
+    }
+    await player.coordinator.play();
+    return undefined;
+  }
+
+  if (action === 'next') {
     return player.coordinator.addURIToQueue(uri, metadata, true, nextTrackNo);
   }
+
+  throw new Error('Amazon Music only handles the {queue, now, next} actions');
 }
 
-module.exports = function (api: any) {
+export = function (api: ActionApi): void {
   api.registerAction('amazonmusic', amazonMusic);
 };

@@ -1,20 +1,20 @@
-const fs = require('fs');
-const JSON5 = require('json5');
-const logger = require('sonos-discovery/lib/helpers/logger');
+import fs = require('node:fs');
+import JSON5 = require('json5');
+import logger = require('sonos-discovery/lib/helpers/logger');
 
-function tryLoadJson(path:  any) {
+function tryLoadJson(filePath: string): Record<string, unknown> {
   try {
-    const fileContent = fs.readFileSync(path);
-    const parsedContent = JSON5.parse(fileContent);
-    return parsedContent;
-  } catch (e: any) {
-    if (e.code === 'ENOENT') {
-      logger.info(`Could not find file ${path}`);
+    const fileContent = fs.readFileSync(filePath);
+    return JSON5.parse(fileContent.toString());
+  } catch (error) {
+    const err = error as NodeJS.ErrnoException;
+    if (err.code === 'ENOENT') {
+      logger.info(`Could not find file ${filePath}`);
     } else {
-      logger.warn(`Could not read file ${path}, ignoring.`, e);
+      logger.warn(`Could not read file ${filePath}, ignoring.`, err);
     }
   }
   return {};
 }
 
-module.exports = tryLoadJson;
+export = tryLoadJson;

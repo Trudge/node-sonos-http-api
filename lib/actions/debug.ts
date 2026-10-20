@@ -1,6 +1,6 @@
 import type { ActionApi, PlayerLike } from '../../src/types/actions';
 
-const pkg = require('../../package.json');
+import pkg = require('../../package.json');
 
 function debug(player: PlayerLike): Promise<unknown> {
   const system = player.system;
@@ -10,7 +10,7 @@ function debug(player: PlayerLike): Promise<unknown> {
       localEndpoint: system.localEndpoint,
       availableServices: system.availableServices
     },
-    players: system.players.map((member: any) => ({
+    players: system.players.map((member: PlayerLike) => ({
       roomName: member.roomName,
       uuid: member.uuid,
       coordinator: member.coordinator.uuid,

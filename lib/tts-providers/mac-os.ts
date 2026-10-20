@@ -1,89 +1,59 @@
-'use strict';
-const crypto = require('crypto');
-const fs = require('fs');
-const path = require('path');
-const fileDuration = require('../helpers/file-duration');
-const settings = require('../../src/settings');
-const logger = require('sonos-discovery/lib/helpers/logger');
-const { execFile } = require('child_process');
+import crypto = require('node:crypto');
+import fs = require('node:fs');
+import path = require('node:path');
+import { execFile } from 'node:child_process';
+import fileDuration = require('../helpers/file-duration');
+import settings = require('../../src/settings');
+import logger = require('sonos-discovery/lib/helpers/logger');
 
-function macSay(phrase:  any, voice:  any) {
+interface TtsResult {
+  duration: number;
+  uri: string;
+}
+
+async function macSay(phrase: string, voice?: string): Promise<TtsResult | undefined> {
   if (!settings.macSay) {
-    return Promise.resolve();
+    return undefined;
   }
 
-  var selcetedRate = settings.macSay.rate;
-  if( !selcetedRate ) {
-    selcetedRate = "default";
-  }
-  var selectedVoice = settings.macSay.voice;
-  if( voice ) {
-    selectedVoice = voice;
-  }
-
-  // Construct a filesystem-safe filename. Voice and rate are also used as
-  // process arguments, but the filename must not allow path separators.
+  const configuredRate = settings.macSay.rate || 'default';
+  const selectedVoice = voice || settings.macSay.voice;
   const phraseHash = crypto.createHash('sha1').update(phrase).digest('hex');
-  const safeRate = /^\d+$/.test(String(selcetedRate)) ? String(selcetedRate) : '';
+  const safeRate = /^\d+$/.test(String(configuredRate)) ? String(configuredRate) : '';
   const safeVoice = String(selectedVoice || 'default').replace(/[^A-Za-z0-9_.-]/g, '_');
   const filename = `macSay-${phraseHash}-${safeRate || 'default'}-${safeVoice}.m4a`;
   const filepath = path.resolve(settings.webroot, 'tts', filename);
-
   const expectedUri = `/tts/${filename}`;
 
   try {
-    fs.accessSync(filepath, fs.R_OK);
-    return fileDuration(filepath)
-      .then((duration: any) => {
-        return {
-          duration,
-          uri: expectedUri
-        };
-      });
-  } catch (err) {
+    fs.accessSync(filepath, fs.constants.R_OK);
+    const duration = await fileDuration(filepath);
+    return { duration, uri: expectedUri };
+  } catch (_error) {
     logger.info(`announce file for phrase "${phrase}" does not seem to exist, downloading`);
   }
 
- return new Promise((resolve: any, reject: any) => {
-    //
-    // For more information on the "say" command, type "man say" in Terminal
-    // or go to
-    // https://developer.apple.com/legacy/library/documentation/Darwin/Reference/ManPages/man1/say.1.html
-    //
-    // The list of available voices can be configured in
-    // System Preferences -> Accessibility -> Speech -> System Voice
-    //
+  const args: string[] = [];
+  if (selectedVoice) {
+    args.push('-v', selectedVoice);
+  }
+  if (safeRate) {
+    args.push('-r', safeRate);
+  }
+  args.push('-o', filepath, phrase);
 
-    // Never pass the phrase through a shell. execFile keeps it as one
-    // literal argument, so quotes, semicolons, $() and backticks are spoken
-    // as text instead of being interpreted by /bin/sh.
-    const args = [];
-    if (selectedVoice) {
-      args.push('-v', safeVoice);
-    }
-    if (safeRate) {
-      args.push('-r', safeRate);
-    }
-    args.push('-o', filepath, phrase);
-
-    execFile('say', args, { timeout: 30000 }, function (error: any) {
-      if (error !== null) {
+  await new Promise<void>((resolve, reject) => {
+    execFile('say', args, { timeout: 30000 }, (error) => {
+      if (error) {
         reject(error);
-      } else {
-        resolve(expectedUri);
+        return;
       }
+      resolve();
     });
+  });
 
-    })
-    .then(() => {
-      return fileDuration(filepath);
-    })
-    .then((duration: any) => {
-      return {
-        duration,
-        uri: expectedUri
-      };
-    });
+  const duration = await fileDuration(filepath);
+  return { duration, uri: expectedUri };
 }
 
-module.exports = macSay;
+export = macSay;

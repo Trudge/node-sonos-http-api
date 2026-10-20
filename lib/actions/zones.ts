@@ -1,4 +1,27 @@
-function simplifyPlayer(player: any): any {
+import type { ActionApi, PlayerLike, ZoneGroupLike } from '../../src/types/actions';
+
+interface SimplifiedPlayer {
+  uuid: string;
+  state: unknown;
+  playMode: unknown;
+  roomName: string;
+  coordinator: string;
+  groupState: unknown;
+  airPlayEnabled: unknown;
+  micEnabled: unknown;
+  wifiEnabled: unknown;
+  wirelessMode: unknown;
+  roomCalibrationState: unknown;
+  hdmiCecAvailable: unknown;
+}
+
+interface SimplifiedZone {
+  uuid: string;
+  coordinator: SimplifiedPlayer;
+  members: SimplifiedPlayer[];
+}
+
+function simplifyPlayer(player: PlayerLike): SimplifiedPlayer {
   return {
     uuid: player.uuid,
     state: player.state,
@@ -15,18 +38,18 @@ function simplifyPlayer(player: any): any {
   };
 }
 
-function simplifyZones(zones: any[]): any[] {
-  return zones.map((zone: any) => ({
+function simplifyZones(zones: ZoneGroupLike[]): SimplifiedZone[] {
+  return zones.map((zone: ZoneGroupLike) => ({
     uuid: zone.uuid,
     coordinator: simplifyPlayer(zone.coordinator),
     members: zone.members.map(simplifyPlayer)
   }));
 }
 
-function zones(player: any): Promise<any[]> {
+function zones(player: PlayerLike): Promise<SimplifiedZone[]> {
   return Promise.resolve(simplifyZones(player.system.zones));
 }
 
-export = function (api: any): void {
+export = function (api: ActionApi): void {
   api.registerAction('zones', zones);
 };

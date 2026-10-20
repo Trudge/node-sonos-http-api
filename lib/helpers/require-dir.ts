@@ -1,20 +1,18 @@
-'use strict';
-const fs = require('fs');
-const path = require('path');
+import fs = require('node:fs');
+import path = require('node:path');
 
-module.exports = function (cwd: any, cb: any) {
-  let files = fs.readdirSync(cwd);
+function requireDir<T>(directory: string, register: (module: T) => void): void {
+  fs.readdirSync(directory)
+    .map((name) => {
+      const fullPath = path.join(directory, name);
+      return { name, fullPath, stat: fs.statSync(fullPath) };
+    })
+    .filter((file) => !file.stat.isDirectory()
+      && !file.name.startsWith('.')
+      && (file.name.endsWith('.js') || (file.name.endsWith('.ts') && !file.name.endsWith('.d.ts'))))
+    .forEach((file) => {
+      register(require(file.fullPath));
+    });
+}
 
-  files.map((name: any) => {
-    let fullPath = path.join(cwd, name);
-    return {
-      name,
-      fullPath,
-      stat: fs.statSync(fullPath)
-    };
-  }).filter((file: any) => {
-    return !file.stat.isDirectory() && !file.name.startsWith('.') && (file.name.endsWith('.js') || (file.name.endsWith('.ts') && !file.name.endsWith('.d.ts')));
-  }).forEach((file: any) => {
-    cb(require(file.fullPath));
-  });
-};
+export = requireDir;

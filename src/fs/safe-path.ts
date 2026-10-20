@@ -1,9 +1,9 @@
-import path = require('path');
+import path = require('node:path');
 
 const AUDIO_EXTENSIONS = new Set(['.mp3', '.m4a', '.aac', '.wav', '.flac', '.ogg', '.opus']);
 
-function badRequest(message: string): Error {
-  const err: any = new Error(message);
+function badRequest(message: string): Error & { statusCode: number } {
+  const err = new Error(message) as Error & { statusCode: number };
   err.statusCode = 400;
   return err;
 }
@@ -21,7 +21,7 @@ function resolveClipPath(clipsDir: string, name: string): { fullPath: string; fi
   let decoded: string;
   try {
     decoded = decodeURIComponent(name);
-  } catch (err) {
+  } catch (_err) {
     throw badRequest('Invalid clip filename encoding');
   }
 

@@ -1,31 +1,54 @@
-'use strict';
-const logger = require('sonos-discovery/lib/helpers/logger');
-const isRadioOrLineIn = require('../helpers/is-radio-or-line-in');
-const backupPresets: Record<string, any[]> = {};
+import logger = require('sonos-discovery/lib/helpers/logger');
+import isRadioOrLineIn = require('./is-radio-or-line-in');
+import type { PlayerLike, PlayerState, ZoneGroupLike } from '../../src/types/actions';
 
-function singlePlayerAnnouncement(player:  any, uri:  any, volume:  any, duration:  any) {
-// Create backup preset to restore this player
+interface PresetPlayer {
+  roomName: string;
+  volume: number | string;
+}
+
+interface PlayMode {
+  repeat?: string | boolean;
+  shuffle?: boolean;
+  crossfade?: boolean;
+}
+
+interface BackupPreset {
+  players: PresetPlayer[];
+  state?: string;
+  uri?: string;
+  metadata?: unknown;
+  playMode?: PlayMode;
+  trackNo?: number;
+  elapsedTime?: number;
+  group?: string;
+}
+
+const backupPresets: Record<string, BackupPreset[]> = {};
+
+function singlePlayerAnnouncement(
+  player: PlayerLike,
+  uri: string,
+  volume: number | string,
+  duration: number
+): Promise<void> {
   const state = player.state;
   const system = player.system;
+  let _groupToRejoin: string | undefined;
 
-  let groupToRejoin;
-
-  const backupPreset: any = {
+  const backupPreset: BackupPreset = {
     players: [
       { roomName: player.roomName, volume: state.volume }
     ]
   };
 
-  if (player.coordinator.uuid == player.uuid) {
-    // This one is coordinator, you will need to rejoin
-    // remember which group you were part of.
-    const group = system.zones.find((zone: any) => zone.coordinator.uuid === player.coordinator.uuid);
-    if (group.members.length > 1) {
+  if (player.coordinator.uuid === player.uuid) {
+    const group = system.zones.find((zone: ZoneGroupLike) => zone.coordinator.uuid === player.coordinator.uuid);
+    if (group && group.members.length > 1) {
       logger.debug('Think its coordinator, will find uri later');
-      groupToRejoin = group.id;
+      _groupToRejoin = group.id;
       backupPreset.group = group.id;
     } else {
-      // was stand-alone, so keep state
       backupPreset.state = state.playbackState;
       backupPreset.uri = player.avTransportUri;
       backupPreset.metadata = player.avTransportUriMetadata;
@@ -33,21 +56,18 @@ function singlePlayerAnnouncement(player:  any, uri:  any, volume:  any, duratio
         repeat: state.playMode.repeat
       };
 
-      if (!isRadioOrLineIn(backupPreset.uri)) {
+      if (!isRadioOrLineIn(String(backupPreset.uri || ''))) {
         backupPreset.trackNo = state.trackNo;
         backupPreset.elapsedTime = state.elapsedTime;
       }
-
     }
   } else {
-    // Was grouped, so we use the group uri here directly.
     backupPreset.uri = `x-rincon:${player.coordinator.uuid}`;
   }
 
   logger.debug('backup state was', backupPreset);
 
-// Use the preset action to play the tts file
-  var ttsPreset = {
+  const ttsPreset = {
     players: [
       { roomName: player.roomName, volume }
     ],
@@ -57,7 +77,7 @@ function singlePlayerAnnouncement(player:  any, uri:  any, volume:  any, duratio
     uri
   };
 
-  let abortTimer: any;
+  let abortTimer: NodeJS.Timeout | undefined;
 
   if (!backupPresets[player.roomName]) {
     backupPresets[player.roomName] = [];
@@ -66,71 +86,65 @@ function singlePlayerAnnouncement(player:  any, uri:  any, volume:  any, duratio
   backupPresets[player.roomName].unshift(backupPreset);
   logger.debug('backup presets array', backupPresets[player.roomName]);
 
-  const prepareBackupPreset = () => {
+  const prepareBackupPreset = async (): Promise<void> => {
     if (backupPresets[player.roomName].length > 1) {
       backupPresets[player.roomName].shift();
       logger.debug('more than 1 backup presets during prepare', backupPresets[player.roomName]);
-      return Promise.resolve();
+      return;
     }
 
     if (backupPresets[player.roomName].length < 1) {
-      return Promise.resolve();
+      return;
     }
 
     const relevantBackupPreset = backupPresets[player.roomName][0];
-
     logger.debug('exactly 1 preset left', relevantBackupPreset);
 
     if (relevantBackupPreset.group) {
-      const zone = system.zones.find((zone: any) => zone.id === relevantBackupPreset.group);
+      const zone = system.zones.find((candidate: ZoneGroupLike) => candidate.id === relevantBackupPreset.group);
       if (zone) {
         relevantBackupPreset.uri = `x-rincon:${zone.uuid}`;
       }
     }
 
     logger.debug('applying preset', relevantBackupPreset);
-    return system.applyPreset(relevantBackupPreset)
-      .then(() => {
-        backupPresets[player.roomName].shift();
-        logger.debug('after backup preset applied', backupPresets[player.roomName]);
-      });
-  }
+    await system.applyPreset(relevantBackupPreset);
+    backupPresets[player.roomName].shift();
+    logger.debug('after backup preset applied', backupPresets[player.roomName]);
+  };
 
-  let timer: any;
+  let timer = 0;
   const restoreTimeout = duration + 2000;
   return system.applyPreset(ttsPreset)
-    .then(() => {
-      return new Promise<void>((resolve: any) => {
-        const transportChange = (state: any) => {
-          logger.debug(`Player changed to state ${state.playbackState}`);
-          if (state.playbackState === 'STOPPED') {
-            return resolve();
-          }
+    .then(() => new Promise<void>((resolve) => {
+      const transportChange = (stateChange: PlayerState) => {
+        logger.debug(`Player changed to state ${stateChange.playbackState}`);
+        if (stateChange.playbackState === 'STOPPED') {
+          resolve();
+          return;
+        }
+        player.once('transport-state', transportChange);
+      };
 
-          player.once('transport-state', transportChange);
-        };
-        setTimeout(() => {
-          player.once('transport-state', transportChange);
-        }, duration / 2);
+      setTimeout(() => {
+        player.once('transport-state', transportChange);
+      }, duration / 2);
 
-        logger.debug(`Setting restore timer for ${restoreTimeout} ms`);
-        timer = Date.now();
-        abortTimer = setTimeout(resolve, restoreTimeout);
-      });
-    })
+      logger.debug(`Setting restore timer for ${restoreTimeout} ms`);
+      timer = Date.now();
+      abortTimer = setTimeout(resolve, restoreTimeout);
+    }))
     .then(() => {
-    const elapsed = Date.now() - timer;
-    logger.debug(`${elapsed} elapsed with ${restoreTimeout - elapsed} to spare`);
-      clearTimeout(abortTimer);
+      const elapsed = Date.now() - timer;
+      logger.debug(`${elapsed} elapsed with ${restoreTimeout - elapsed} to spare`);
+      if (abortTimer) clearTimeout(abortTimer);
     })
     .then(prepareBackupPreset)
-    .catch((err: any) => {
+    .catch(async (err: unknown) => {
       logger.error(err);
-      return prepareBackupPreset()
-        .then(() => {
-          throw err;
-        });
+      await prepareBackupPreset();
+      throw err;
     });
 }
 
-module.exports = singlePlayerAnnouncement;
+export = singlePlayerAnnouncement;

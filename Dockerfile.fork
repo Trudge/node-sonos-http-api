@@ -11,18 +11,16 @@ FROM node:22-alpine@sha256:0a7108bf6c7bf5de370ffb1a3ed6be93d405b43ff159f681a8d18
 WORKDIR /app
 ENV NODE_ENV=development
 
-RUN apk add --no-cache curl
-
 COPY node-sonos-http-api/ /app/
 COPY node-sonos-discovery/ /app/sonos-discovery/
 
-# Build the discovery dependency first so the file: dependency exposes dist/.
+# Build the discovery dependency first so the file: dependency exposes its lib/ output.
 RUN cd /app/sonos-discovery \
-    && npm install --ignore-scripts --no-audit --no-fund \
+    && npm ci --ignore-scripts --no-audit --no-fund \
     && npm run build \
     && rm -rf node_modules /tmp/* /root/.npm
 
-RUN npm install --ignore-scripts --no-audit --no-fund \
+RUN npm ci --ignore-scripts --no-audit --no-fund \
     && npm run build \
     && rm -rf /tmp/* /root/.npm
 
@@ -34,10 +32,11 @@ LABEL org.opencontainers.image.description="Fork of node-sonos-http-api by Jimmy
 LABEL org.opencontainers.image.source="https://github.com/Trudge/node-sonos-http-api"
 LABEL org.opencontainers.image.licenses="MIT"
 
-WORKDIR /app
-ENV NODE_ENV=production APP_ROOT=/app
+ARG PUID=1001
+ARG PGID=3001
 
-RUN apk add --no-cache curl
+WORKDIR /app
+ENV NODE_ENV=production APP_ROOT=/app HOME=/tmp
 
 COPY --from=builder /app/dist/ /app/
 COPY --from=builder /app/package.json /app/package-lock.json /app/
@@ -46,16 +45,16 @@ COPY --from=builder /app/static/ /app/static/
 COPY --from=builder /app/presets/ /app/presets/
 COPY --from=builder /app/LICENSE.md /app/ATTRIBUTION.md /app/
 
-RUN npm install --omit=dev --ignore-scripts --no-audit --no-fund \
+RUN npm ci --omit=dev --ignore-scripts --no-audit --no-fund \
     && rm -rf /tmp/* /root/.npm \
-    && mkdir -p cache \
-    && chown -R node:node /app
+    && mkdir -p cache static/tts \
+    && chown -R "${PUID}:${PGID}" /app
 
-EXPOSE 5005
+EXPOSE 5005 5006
 
-USER node
+USER ${PUID}:${PGID}
 
-HEALTHCHECK --interval=1m --timeout=2s --start-period=30s \
-  CMD curl -LSfs http://localhost:5005/zones || exit 1
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
+  CMD wget -q -T 5 -O /dev/null http://127.0.0.1:5005/zones || exit 1
 
 CMD ["node", "src/server.js"]

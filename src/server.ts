@@ -1,18 +1,19 @@
-import http = require('http');
-import https = require('https');
-import fs = require('fs');
-import crypto = require('crypto');
-import type { IncomingMessage, ServerResponse } from 'http';
+import http = require('node:http');
+import https = require('node:https');
+import fs = require('node:fs');
+import crypto = require('node:crypto');
+import type { IncomingMessage, ServerResponse } from 'node:http';
 
-const auth = require('basic-auth');
-const SonosSystem = require('sonos-discovery');
-const logger = require('sonos-discovery/lib/helpers/logger');
-const SonosHttpAPI = require('./http/router');
-const serveStatic = require('serve-static');
-const settings = require('./settings');
+import auth = require('basic-auth');
+import SonosSystem = require('sonos-discovery');
+import logger = require('sonos-discovery/lib/helpers/logger');
+import SonosHttpAPI = require('./http/router');
+import serveStatic = require('serve-static');
+import settings = require('./settings');
+import type { SonosSystemLike } from './types/actions';
 
 const serve = serveStatic(settings.webroot);
-const discovery = new SonosSystem(settings);
+const discovery = new SonosSystem(settings) as SonosSystemLike;
 const api = new SonosHttpAPI(discovery, settings);
 
 const AUTH_WINDOW_MS = 60 * 1000;
@@ -79,7 +80,7 @@ function setSecurityHeaders(req: IncomingMessage, res: ServerResponse): void {
     'Content-Security-Policy',
     "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'"
   );
-  if ((req.socket as any).encrypted) {
+  if ((req.socket as { encrypted?: boolean }).encrypted) {
     res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
   }
 }
@@ -133,7 +134,7 @@ function requestHandler(req: IncomingMessage, res: ServerResponse): void {
     return;
   }
 
-  serve(req, res, (err?: any) => {
+  serve(req, res, (err?: unknown) => {
     if (err) {
       logger.error(err);
       res.statusCode = 500;
@@ -180,8 +181,8 @@ server.listen(settings.port, host, () => {
   logger.info('http server listening on', host, 'port', settings.port);
 });
 
-server.on('error', (err: any) => {
-  if (err.code && err.code === 'EADDRINUSE') {
+server.on('error', (err: NodeJS.ErrnoException) => {
+  if (err.code === 'EADDRINUSE') {
     logger.error(`Port ${settings.port} seems to be in use already. Make sure the sonos-http-api isn't
     already running, or that no other server uses that port. You can specify an alternative http port
     with property "port" in settings.json`);

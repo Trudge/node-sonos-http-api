@@ -1,4 +1,4 @@
-'use strict';
+
 const test = require('node:test');
 const assert = require('node:assert');
 const registerReport = require('../lib/actions/report');
@@ -50,14 +50,14 @@ function makeSystem() {
     availableServices: { Spotify: { id: 9 } },
     getAnyPlayer: () => coordinator,
     getPlayer: (name) => (name.toLowerCase() === 'office' ? coordinator : undefined),
-    getFavorites: async () => [{ title: 'Fav' }],
-    getPlaylists: async () => [{ title: 'List' }]
+    getFavorites: async () => [{ title: 'Fav', metadata: '<desc>SA_RINCON_TOKEN</desc>' }],
+    getPlaylists: async () => [{ title: 'List', metadata: '<desc>SA_RINCON_TOKEN</desc>' }]
   };
   return system;
 }
 
 function getHandler() {
-  let handler;
+  let handler: ((player: any, values: string[]) => Promise<any>) | undefined;
   registerReport({ registerAction: (name, fn) => { if (name === 'report') handler = fn; } });
   assert.ok(handler);
   return handler;
@@ -120,6 +120,9 @@ test('export includes zones, players, sources, favorites, playlists, and alarms'
   assert.strictEqual(exported.sources.length, 1);
   assert.strictEqual(exported.favorites.length, 1);
   assert.strictEqual(exported.playlists.length, 1);
+  assert.strictEqual(exported.favorites[0].metadata, undefined);
+  assert.strictEqual(exported.playlists[0].metadata, undefined);
+  assert.ok(exported.redactions.includes('favorites[].metadata'));
   assert.ok(Array.isArray(exported.alarms));
 });
 

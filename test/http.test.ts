@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert';
-import { spawn, ChildProcess } from 'node:child_process';
+import { spawn, type ChildProcess } from 'node:child_process';
 import { createServer } from 'node:net';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -26,7 +26,7 @@ async function waitForServer(url: string, child: ChildProcess): Promise<void> {
     try {
       await fetch(url, { signal: AbortSignal.timeout(500) });
       return;
-    } catch (err) {
+    } catch (_err) {
       await new Promise((resolve) => setTimeout(resolve, 50));
     }
   }
